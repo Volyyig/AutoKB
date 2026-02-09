@@ -67,6 +67,10 @@ impl PlaybackState {
 
     pub fn finish(&self) {
         self.is_playing.store(false, Ordering::SeqCst);
+
+        // Cleanup UI via input_manager
+        crate::input_manager::on_playback_finish();
+
         // Emit event to frontend
         crate::input_manager::emit_event(
             "hotkey-event",
@@ -140,9 +144,24 @@ fn execute_event(
     // Calculate adjusted delay
     let delay_ms = (event.delay_ms() as f64 / speed_multiplier) as u64;
 
-    // Wait for the delay
+    // Wait for the delay (interruptible)
     if delay_ms > 0 {
-        thread::sleep(Duration::from_millis(delay_ms));
+        let chunk_ms = 100; // Check stop every 100ms
+        let mut remaining = delay_ms;
+
+        while remaining > 0 {
+            if get_state().should_stop() {
+                return Err("Playback stopped".to_string());
+            }
+
+            let sleep_time = if remaining > chunk_ms {
+                chunk_ms
+            } else {
+                remaining
+            };
+            thread::sleep(Duration::from_millis(sleep_time));
+            remaining -= sleep_time;
+        }
     }
 
     // Check if we should stop

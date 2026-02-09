@@ -19,13 +19,30 @@ use tauri::Manager;
 
 /// Start recording keyboard/mouse events
 #[tauri::command]
-fn start_recording() -> Result<(), String> {
+fn start_recording(app: tauri::AppHandle) -> Result<(), String> {
+    // Hide main window
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+
+    // Show overlay (Red)
+    input_manager::show_overlay(&app, "#f85149");
+
     recorder::start_recording()
 }
 
 /// Stop recording and return recorded events
 #[tauri::command]
-fn stop_recording() -> Vec<ScriptEvent> {
+fn stop_recording(app: tauri::AppHandle) -> Vec<ScriptEvent> {
+    // Hide overlay
+    input_manager::hide_overlay(&app);
+
+    // Show main window
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+
     recorder::stop_recording()
 }
 
@@ -53,19 +70,48 @@ fn record_frontend_event(event: ScriptEvent) {
 
 /// Play a script
 #[tauri::command]
-fn play_script(script: Script) -> Result<(), String> {
+fn play_script(app: tauri::AppHandle, script: Script) -> Result<(), String> {
+    // Hide main window
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+
+    // Show overlay (Blue)
+    input_manager::show_overlay(&app, "#58a6ff");
+
     player::play_script(script)
 }
 
 /// Play a list of events with speed multiplier
 #[tauri::command]
-fn play_events(events: Vec<ScriptEvent>, speed_multiplier: f64) -> Result<(), String> {
+fn play_events(
+    app: tauri::AppHandle,
+    events: Vec<ScriptEvent>,
+    speed_multiplier: f64,
+) -> Result<(), String> {
+    // Hide main window
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+
+    // Show overlay (Blue)
+    input_manager::show_overlay(&app, "#58a6ff");
+
     player::play_events(events, speed_multiplier)
 }
 
 /// Stop playback
 #[tauri::command]
-fn stop_playback() {
+fn stop_playback(app: tauri::AppHandle) {
+    // Hide overlay
+    input_manager::hide_overlay(&app);
+
+    // Show main window
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+
     player::stop_playback()
 }
 
@@ -292,15 +338,69 @@ fn get_app_state() -> AppState {
 // Main Entry Point
 // ============================================================================
 
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton as TrayMouseButton, 
+        MouseButtonState as TrayMouseButtonState,
+        TrayIconBuilder, TrayIconEvent},
+};
+
+// ... (existing code)
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init()) // Add shell plugin
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // Initialize unified input manager (handles hotkeys, recording, macros)
             input_manager::init(app.handle().clone());
+
+            // System Tray Setup
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
+            let menu = Menu::with_items(app, &[&quit_i]).unwrap();
+
+            let _tray = TrayIconBuilder::with_id("tray")
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: TrayMouseButton::Left,
+                        button_state: TrayMouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            if window.is_visible().unwrap_or(false) {
+                                let _ = window.hide();
+                            } else {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                })
+                .build(app)?;
+
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // If it's the main window, hide it instead of closing
+                if window.label() == "main" {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             // Recording

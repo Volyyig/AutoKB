@@ -12,24 +12,20 @@ const store = useScriptStore();
 
 // Keyboard listener for when window is focused (rdev limitation workaround)
 const handleFilesKey = async (e: KeyboardEvent) => {
-  if (!store.isRecording) return;
-
-  // Ignore F-keys (handled by hotkeys global listener usually, but we can capture them too if needed)
-  // But F9/F10 are handled globally. We should avoid double-triggering logic if rdev works for hotkeys.
-  // Actually, if rdev fails for focused window, then hotkeys F9/F10 might ALSO fail.
-  // So we should handle F9/F10 here too just in case.
-
-  if (e.key === 'F9') {
+  // Handle shortcuts first
+  console.log(e);
+  if (e.key === 'F9' && e.type === 'keydown') {
     // Trigger record toggle via store
-    if (store.isRecording) await store.stopRecording();
-    else await store.startRecording();
+    if (!store.isRecording) await store.startRecording();
     return;
   }
-  if (e.key === 'F10') {
-    if (store.isPlaying) await store.stopPlayback();
-    else await store.startPlayback();
+  if (e.key === 'F10' && e.type === 'keydown') {
+    if (!store.isPlaying) await store.startPlayback();
     return;
   }
+
+  // Only handle recording events if recording (and not a shortcut)
+  if (!store.isRecording) return;
 
   // Construct ScriptEvent
   // We need to map JS key code to our Rust KeyboardKey format
