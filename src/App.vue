@@ -6,10 +6,14 @@ import ParamEditor from './components/ParamEditor.vue';
 import MacroPanel from './components/MacroPanel.vue';
 
 import { onMounted, onUnmounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 
 const store = useScriptStore();
 
 onMounted(async () => {
+  // Show main window after setup is complete (prevents white flash)
+  invoke('release_main_window');
+  await invoke('release_overlay_window');
   // ... existing init
   window.addEventListener('keydown', store.handleFrontendEvent);
   window.addEventListener('keyup', store.handleFrontendEvent);

@@ -15,22 +15,8 @@
         "label": "main",
         "title": "AutoKB",
         "width": 800,
-        "height": 600
-      },
-      {
-        "label": "overlay",
-        "title": "Overlay",
-        "width": 800,
         "height": 600,
-        "decorations": false,
-        "transparent": true,
-        "resizable": false,
-        "maximizable": true,
-        "alwaysOnTop": true,
-        "visible": false,
-        "fullscreen": false,
-        "skipTaskbar": true,
-        "url": "overlay.html"
+        "visible": false
       }
     ],
     "security": {

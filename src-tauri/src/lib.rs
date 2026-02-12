@@ -12,6 +12,22 @@ use script::{KeyboardKey, MacroDefinition, MacroTrigger, MouseButton, Script, Sc
 use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
+use tauri::{WebviewUrl, WebviewWindowBuilder};
+
+// Show main window after setup is complete (prevents white flash)
+#[tauri::command]
+fn release_main_window(app: tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+    }
+}
+
+#[tauri::command]
+fn release_overlay_window(app: tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("overlay") {
+        let _ = window.set_ignore_cursor_events(true);
+    }
+}
 
 // ============================================================================
 // Recording Commands
@@ -145,10 +161,11 @@ fn load_script(path: String) -> Result<Script, String> {
 
 /// Get default scripts directory
 #[tauri::command]
-fn get_scripts_dir() -> Result<String, String> {
-    let dir = dirs::document_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("AutoKB")
+fn get_scripts_dir(app: tauri::AppHandle) -> Result<String, String> {
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| format!("Failed to get app local data dir: {}", e))?
         .join("scripts");
 
     // Create directory if it doesn't exist
@@ -406,63 +423,77 @@ pub fn run() {
                                 );
                             }
                         }
-                        if shortcut.matches(Modifiers::empty(), Code::Escape) {
-                            println!("Global Escape pressed");
-                            let was_recording = recorder::is_recording();
-                            let was_playing = player::is_playing();
+                        // if shortcut.matches(Modifiers::empty(), Code::Escape) {
+                        //     println!("Global Escape pressed");
+                        //     let was_recording = recorder::is_recording();
+                        //     let was_playing = player::is_playing();
 
-                            if was_recording {
-                                let _ = recorder::stop_recording();
-                            }
-                            if was_playing {
-                                player::stop_playback();
-                            }
+                        //     if was_recording {
+                        //         let _ = recorder::stop_recording();
+                        //     }
+                        //     if was_playing {
+                        //         player::stop_playback();
+                        //     }
 
-                            if was_recording || was_playing {
-                                if let Some(window) = app.get_webview_window("main") {
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                }
-                                input_manager::hide_overlay(app);
+                        //     if was_recording || was_playing {
+                        //         if let Some(window) = app.get_webview_window("main") {
+                        //             let _ = window.show();
+                        //             let _ = window.set_focus();
+                        //         }
+                        //         input_manager::hide_overlay(app);
 
-                                input_manager::emit_event(
-                                    "hotkey-event",
-                                    crate::hotkey::HotkeyEvent {
-                                        action: "emergency-stop".to_string(),
-                                        recording: false,
-                                        playing: false,
-                                    },
-                                );
-                            }
-                        }
+                        //         input_manager::emit_event(
+                        //             "hotkey-event",
+                        //             crate::hotkey::HotkeyEvent {
+                        //                 action: "emergency-stop".to_string(),
+                        //                 recording: false,
+                        //                 playing: false,
+                        //             },
+                        //         );
+                        //     }
+                        // }
                     }
                 })
                 .build(),
         )
         .setup(|app| {
-
             #[cfg(desktop)]
             {
                 use tauri_plugin_global_shortcut::GlobalShortcutExt;
-                app.global_shortcut().register(Shortcut::new(None, Code::F9))?;
-                app.global_shortcut().register(Shortcut::new(None, Code::F10))?;
-                app.global_shortcut().register(Shortcut::new(None, Code::Escape))?;
+                app.global_shortcut()
+                    .register(Shortcut::new(None, Code::F9))?;
+                app.global_shortcut()
+                    .register(Shortcut::new(None, Code::F10))?;
+                app.global_shortcut()
+                    .register(Shortcut::new(None, Code::Escape))?;
             }
-
-            let window = app.get_webview_window("overlay").unwrap();
-            // 监听焦点变化事件
-            window.on_window_event(|event| {
-                if let tauri::WindowEvent::Focused(focused) = event {
-                    if *focused {
-                        println!("窗口获得了焦点！{:?}", chrono::Local::now());
-                    } else {
-                        println!("窗口失去了焦点！{:?}", chrono::Local::now());
-                    }
-                }
-            });
 
             // Initialize unified input manager (handles hotkeys, recording, macros)
             input_manager::init(app.handle().clone());
+
+            // create overlay window
+            let _ = WebviewWindowBuilder::new(
+                app,
+                "overlay",
+                WebviewUrl::App(PathBuf::from("overlay.html")),
+            )
+            // .inner_size(width, height)
+            // .position(-100., -100.)
+            .decorations(false)
+            .transparent(true)
+            .resizable(false)
+            .maximizable(true)
+            .always_on_top(true)
+            .visible(false)
+            .fullscreen(true)
+            .skip_taskbar(true)
+            .build();
+            // if let Some(window) = app.get_webview_window("overlay") {
+            //     let _ = window.set_decorations(false);
+            //     let _ = window.set_always_on_top(true);
+            //     let _ = window.maximize();
+            //     let _ = window.set_ignore_cursor_events(true);
+            // }
 
             // System Tray Setup
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
@@ -510,6 +541,9 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            // Window
+            release_main_window,
+            release_overlay_window,
             // Recording
             start_recording,
             stop_recording,

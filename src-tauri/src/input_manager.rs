@@ -63,20 +63,10 @@ pub fn init(app_handle: AppHandle) {
 /// Helper to show overlay with specific color
 pub fn show_overlay(app: &AppHandle, color: &str) {
     if let Some(window) = app.get_webview_window("overlay") {
-        let _ = window.set_decorations(false);
-        let _ = window.set_always_on_top(true);
-        let _ = window.maximize();
         let _ = window.show();
-
-        // maximize isn't always instant/guaranteed to cover removing border if separate
-        // But for this overlay setup it should be fine.
 
         let script = format!("document.body.style.borderColor = '{}';", color);
         let _ = window.eval(&script);
-
-        if let Err(e) = window.set_ignore_cursor_events(true) {
-            eprintln!("Failed to set ignore cursor events: {}", e);
-        }
     }
 }
 
@@ -84,7 +74,6 @@ pub fn show_overlay(app: &AppHandle, color: &str) {
 pub fn hide_overlay(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("overlay") {
         let _ = window.hide();
-        let _ = window.set_ignore_cursor_events(false);
     }
 }
 
