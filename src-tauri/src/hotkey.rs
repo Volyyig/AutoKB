@@ -38,6 +38,14 @@ impl HotkeyState {
     pub fn get_stop_key(&self) -> rdev::Key {
         *self.stop_key.lock()
     }
+
+    pub fn get_all_keys(&self) -> Vec<rdev::Key> {
+        vec![
+            self.get_recording_key(),
+            self.get_playback_key(),
+            self.get_stop_key(),
+        ]
+    }
 }
 
 impl Default for HotkeyState {

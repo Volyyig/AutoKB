@@ -340,10 +340,12 @@ fn get_app_state() -> AppState {
 
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::{MouseButton as TrayMouseButton, 
-        MouseButtonState as TrayMouseButtonState,
-        TrayIconBuilder, TrayIconEvent},
+    tray::{
+        MouseButton as TrayMouseButton, MouseButtonState as TrayMouseButtonState, TrayIconBuilder,
+        TrayIconEvent,
+    },
 };
+use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 
 // ... (existing code)
 
@@ -353,7 +355,112 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init()) // Add shell plugin
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(move |app, shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
+                        if shortcut.matches(Modifiers::empty(), Code::F9) {
+                            println!("Global F9 pressed");
+                            if recorder::is_recording() {
+                                let _ = stop_recording(app.clone());
+                                input_manager::emit_event(
+                                    "hotkey-event",
+                                    crate::hotkey::HotkeyEvent {
+                                        action: "recording-stopped".to_string(),
+                                        recording: false,
+                                        playing: player::is_playing(),
+                                    },
+                                );
+                            } else if !player::is_playing() {
+                                let _ = start_recording(app.clone());
+                                input_manager::emit_event(
+                                    "hotkey-event",
+                                    crate::hotkey::HotkeyEvent {
+                                        action: "recording-started".to_string(),
+                                        recording: true,
+                                        playing: false,
+                                    },
+                                );
+                            }
+                        }
+                        if shortcut.matches(Modifiers::empty(), Code::F10) {
+                            println!("Global F10 pressed");
+                            if player::is_playing() {
+                                stop_playback(app.clone());
+                                input_manager::emit_event(
+                                    "hotkey-event",
+                                    crate::hotkey::HotkeyEvent {
+                                        action: "playback-stopped".to_string(),
+                                        recording: recorder::is_recording(),
+                                        playing: false,
+                                    },
+                                );
+                            } else {
+                                input_manager::emit_event(
+                                    "hotkey-event",
+                                    crate::hotkey::HotkeyEvent {
+                                        action: "playback-requested".to_string(),
+                                        recording: recorder::is_recording(),
+                                        playing: false,
+                                    },
+                                );
+                            }
+                        }
+                        if shortcut.matches(Modifiers::empty(), Code::Escape) {
+                            println!("Global Escape pressed");
+                            let was_recording = recorder::is_recording();
+                            let was_playing = player::is_playing();
+
+                            if was_recording {
+                                let _ = recorder::stop_recording();
+                            }
+                            if was_playing {
+                                player::stop_playback();
+                            }
+
+                            if was_recording || was_playing {
+                                if let Some(window) = app.get_webview_window("main") {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                                input_manager::hide_overlay(app);
+
+                                input_manager::emit_event(
+                                    "hotkey-event",
+                                    crate::hotkey::HotkeyEvent {
+                                        action: "emergency-stop".to_string(),
+                                        recording: false,
+                                        playing: false,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                })
+                .build(),
+        )
         .setup(|app| {
+
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_global_shortcut::GlobalShortcutExt;
+                app.global_shortcut().register(Shortcut::new(None, Code::F9))?;
+                app.global_shortcut().register(Shortcut::new(None, Code::F10))?;
+                app.global_shortcut().register(Shortcut::new(None, Code::Escape))?;
+            }
+
+            let window = app.get_webview_window("overlay").unwrap();
+            // 监听焦点变化事件
+            window.on_window_event(|event| {
+                if let tauri::WindowEvent::Focused(focused) = event {
+                    if *focused {
+                        println!("窗口获得了焦点！{:?}", chrono::Local::now());
+                    } else {
+                        println!("窗口失去了焦点！{:?}", chrono::Local::now());
+                    }
+                }
+            });
+
             // Initialize unified input manager (handles hotkeys, recording, macros)
             input_manager::init(app.handle().clone());
 

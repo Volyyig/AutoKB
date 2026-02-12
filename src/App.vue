@@ -6,78 +6,20 @@ import ParamEditor from './components/ParamEditor.vue';
 import MacroPanel from './components/MacroPanel.vue';
 
 import { onMounted, onUnmounted } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
 
 const store = useScriptStore();
 
-// Keyboard listener for when window is focused (rdev limitation workaround)
-const handleFilesKey = async (e: KeyboardEvent) => {
-  // Handle shortcuts first
-  console.log(e);
-  if (e.key === 'F9' && e.type === 'keydown') {
-    // Trigger record toggle via store
-    if (!store.isRecording) await store.startRecording();
-    return;
-  }
-  if (e.key === 'F10' && e.type === 'keydown') {
-    if (!store.isPlaying) await store.startPlayback();
-    return;
-  }
-
-  // Only handle recording events if recording (and not a shortcut)
-  if (!store.isRecording) return;
-
-  // Construct ScriptEvent
-  // We need to map JS key code to our Rust KeyboardKey format
-  // This is a simplified mapping.
-  // We'll send the event to backend.
-
-  const event = {
-    type: e.type === 'keydown' ? 'KeyPress' : 'KeyRelease',
-    key: { Char: e.key.length === 1 ? e.key : undefined, Special: e.key.length > 1 ? e.key : undefined },
-    delay_ms: 0, // Backend will override
-  };
-
-  // Clean up key structure (Rust enum variation)
-  // If char is undefined, we shouldn't send it, but we need to match the Rust serde layout.
-  // Rust: KeyboardKey::Char(char) or KeyboardKey::Special(String)
-  // JSON for enum: {"Char": "a"} or {"Special": "Enter"}
-
-  let keyPayload;
-  if (e.key.length === 1) {
-    keyPayload = { Char: e.key };
-  } else {
-    // Map some common JS keys to our expected special keys if names differ
-    let keyName = e.key;
-    if (keyName === ' ') keyName = 'Space';
-    if (keyName === 'Control') keyName = 'ControlLeft'; // Simplified
-    if (keyName === 'Shift') keyName = 'ShiftLeft';
-    if (keyName === 'Alt') keyName = 'Alt';
-    if (keyName === 'Meta') keyName = 'MetaLeft';
-    // ... add more as needed
-    keyPayload = { Special: keyName };
-  }
-
-  await invoke('record_frontend_event', {
-    event: {
-      [e.type === 'keydown' ? 'KeyPress' : 'KeyRelease']: {
-        key: keyPayload,
-        delay_ms: 0
-      }
-    }
-  });
-};
-
 onMounted(async () => {
   // ... existing init
-  window.addEventListener('keydown', handleFilesKey);
-  window.addEventListener('keyup', handleFilesKey);
+  window.addEventListener('keydown', store.handleFrontendEvent);
+  window.addEventListener('keyup', store.handleFrontendEvent);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleFilesKey);
-  window.removeEventListener('keyup', handleFilesKey);
+  window.removeEventListener('keydown', store.handleFrontendEvent);
+  window.removeEventListener('keyup', store.handleFrontendEvent);
 });
+
 onMounted(() => {
   store.init();
 });

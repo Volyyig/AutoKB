@@ -355,6 +355,61 @@ export const useScriptStore = defineStore('script', () => {
         await loadMacros();
     }
 
+    /**
+     * Handle frontend keyboard events (when window is focused)
+     */
+    async function handleFrontendEvent(e: KeyboardEvent) {
+        // Handle shortcuts first
+        if (e.key === 'F9' && e.type === 'keydown') {
+            await toggleRecording();
+            return;
+        }
+        if (e.key === 'F10' && e.type === 'keydown') {
+            await togglePlayback();
+            return;
+        }
+
+        // Only handle recording events if recording
+        if (!isRecording.value) return;
+
+        // Map key to Backend format
+        let keyPayload;
+        if (e.key.length === 1) {
+            keyPayload = { Char: e.key };
+        } else {
+            // Map common keys to match Rust rdev names
+            let keyName = e.key;
+            const keyMap: Record<string, string> = {
+                ' ': 'Space',
+                'Control': 'ControlLeft',
+                'Shift': 'ShiftLeft',
+                'Alt': 'Alt',
+                'Meta': 'MetaLeft',
+                'ArrowUp': 'UpArrow',
+                'ArrowDown': 'DownArrow',
+                'ArrowLeft': 'LeftArrow',
+                'ArrowRight': 'RightArrow',
+                'Enter': 'Return'
+            };
+            if (keyMap[keyName]) {
+                keyName = keyMap[keyName];
+            }
+            keyPayload = { Special: keyName };
+        }
+
+        try {
+            await invoke('record_frontend_event', {
+                event: {
+                    event_type: e.type === 'keydown' ? 'KeyPress' : 'KeyRelease',
+                    key: keyPayload,
+                    delay_ms: 0 // Backend will override
+                }
+            });
+        } catch (error) {
+            console.error('Failed to record frontend event:', error);
+        }
+    }
+
     return {
         // State
         currentScript,
@@ -390,5 +445,6 @@ export const useScriptStore = defineStore('script', () => {
         clearScript,
         syncState,
         init,
+        handleFrontendEvent,
     };
 });

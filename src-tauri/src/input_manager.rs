@@ -7,7 +7,7 @@ use crate::recorder;
 use crate::script::{KeyboardKey, MouseButton, ScriptEvent};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use rdev::{Event, EventType, Key};
+use rdev::{Event, EventType};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -52,7 +52,7 @@ pub fn init(app_handle: AppHandle) {
         let manager = &INPUT_MANAGER;
 
         if let Err(error) = rdev::listen(move |event| {
-            // println!("{:?}", event); // Debug print removed
+            println!("{:?}", event); // Debug print removed
             handle_event(event, manager);
         }) {
             eprintln!("Input listener error: {:?}", error);
@@ -99,156 +99,19 @@ pub fn on_playback_finish() {
     if let Some(handle) = manager.app_handle.lock().as_ref() {
         if let Some(window) = handle.get_webview_window("main") {
             let _ = window.show();
-            let _ = window.set_focus();
+            // window.set_focus(); // REMOVED: Do not steal focus during recording/playback
         }
         hide_overlay(handle);
     }
 }
 
-fn handle_event(event: Event, manager: &InputManager) {
-    // 1. Check Hotkeys first
-    if let EventType::KeyPress(key) = event.event_type {
-        match key {
-            Key::F9 => {
-                // Toggle Recording
-                if recorder::is_recording() {
-                    let _ = recorder::stop_recording();
-
-                    if let Some(handle) = manager.app_handle.lock().as_ref() {
-                        // show main, hide overlay
-                        if let Some(window) = handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                        hide_overlay(handle);
-                    }
-
-                    manager.emit_event(
-                        "hotkey-event",
-                        crate::hotkey::HotkeyEvent {
-                            action: "recording-stopped".to_string(),
-                            recording: false,
-                            playing: player::is_playing(),
-                        },
-                    );
-                } else if !player::is_playing() {
-                    // Hide main window, show overlay (Red)
-                    if let Some(handle) = manager.app_handle.lock().as_ref() {
-                        if let Some(window) = handle.get_webview_window("main") {
-                            let _ = window.hide();
-                        }
-                        show_overlay(handle, "#f85149");
-                    }
-
-                    let _ = recorder::start_recording();
-                    manager.emit_event(
-                        "hotkey-event",
-                        crate::hotkey::HotkeyEvent {
-                            action: "recording-started".to_string(),
-                            recording: true,
-                            playing: false,
-                        },
-                    );
-                }
-                return; // Don't process hotkey further
-            }
-            Key::F10 => {
-                // Toggle Playback
-                if player::is_playing() {
-                    player::stop_playback();
-
-                    if let Some(handle) = manager.app_handle.lock().as_ref() {
-                        // show main, hide overlay
-                        if let Some(window) = handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                        hide_overlay(handle);
-                    }
-
-                    manager.emit_event(
-                        "hotkey-event",
-                        crate::hotkey::HotkeyEvent {
-                            action: "playback-stopped".to_string(),
-                            recording: recorder::is_recording(),
-                            playing: false,
-                        },
-                    );
-                } else {
-                    // We don't start playback here directly because we need the script from frontend usually.
-                    // But if there IS a current script provided via other means, we might.
-                    // The original code just emitted "playback-requested".
-                    // The FRONTEND listens to this and calls `startPlayback`.
-                    // So we DON'T show overlay here yet. The frontend will call `play_script` which shows overlay.
-
-                    // HOWEVER, if the frontend window is hidden (e.g. we handle it all), we might need to?
-                    // But if frontend is managing the script state, we must wait for frontend.
-
-                    // Actually, if we are in overlay mode (e.g. paused?), we might need to show it?
-                    // For now, let's assume frontend will call `play_script` which handles the overlay.
-                    // But wait, if frontend is hidden, can it react?
-                    // Yes, frontend logic runs even if hidden (it's a webview).
-
-                    manager.emit_event(
-                        "hotkey-event",
-                        crate::hotkey::HotkeyEvent {
-                            action: "playback-requested".to_string(),
-                            recording: recorder::is_recording(),
-                            playing: false,
-                        },
-                    );
-                }
-                return;
-            }
-            Key::Escape => {
-                // Emergency Stop
-                let was_recording = recorder::is_recording();
-                let was_playing = player::is_playing();
-
-                if was_recording {
-                    let _ = recorder::stop_recording();
-                }
-                if was_playing {
-                    player::stop_playback();
-                }
-
-                // Force UI restore if we were doing anything OR if we just want to be safe
-                // We add a check for window visibility if possible? No, just force it.
-                // But we don't want to show invalid UI if we weren't doing anything.
-                // However, the issue is when 'was_playing' is false but overlay is still there.
-
-                // Let's assume if Esc is pressed and we aren't recording/playing, we MIGHT still need to cleanup
-                // if the overlay is visible.
-
-                // For now, let's keep the condition but assume the 'finish()' fix prevents the stuck state.
-                // But to be extra safe:
-                if was_recording || was_playing {
-                    // Restore windows
-                    if let Some(handle) = manager.app_handle.lock().as_ref() {
-                        if let Some(window) = handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                        hide_overlay(handle);
-                    }
-
-                    manager.emit_event(
-                        "hotkey-event",
-                        crate::hotkey::HotkeyEvent {
-                            action: "emergency-stop".to_string(),
-                            recording: false,
-                            playing: false,
-                        },
-                    );
-                } else {
-                    // Fallback safety: Check if overlay is somehow visible and hide it?
-                    // It's hard to check visibility cheaply.
-                    // But if we fix 'finish()', this shouldn't happen.
-                    // The user's issue might be solely due to 'finish()' not cleaning up.
-                }
-                return;
-            }
-            _ => {}
+fn handle_event(event: Event, _manager: &InputManager) {
+    // 1. Hotkeys are now handled by tauri-plugin-global-shortcut in lib.rs
+    // This removes hotkey-related keys from this low-level listener to avoid conflicts
+    let hotkey_state = crate::hotkey::get_state();
+    if let EventType::KeyPress(key) | EventType::KeyRelease(key) = event.event_type {
+        if hotkey_state.get_all_keys().contains(&key) {
+            return;
         }
     }
 
