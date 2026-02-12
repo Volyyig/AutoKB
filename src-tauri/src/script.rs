@@ -11,6 +11,8 @@ pub enum MouseButton {
     Left,
     Right,
     Middle,
+    Back,
+    Forward,
     Unknown,
 }
 
@@ -20,6 +22,8 @@ impl From<rdev::Button> for MouseButton {
             rdev::Button::Left => MouseButton::Left,
             rdev::Button::Right => MouseButton::Right,
             rdev::Button::Middle => MouseButton::Middle,
+            rdev::Button::Unknown(1) => MouseButton::Back,
+            rdev::Button::Unknown(2) => MouseButton::Forward,
             _ => MouseButton::Unknown,
         }
     }
@@ -31,6 +35,8 @@ impl From<MouseButton> for enigo::Button {
             MouseButton::Left => enigo::Button::Left,
             MouseButton::Right => enigo::Button::Right,
             MouseButton::Middle => enigo::Button::Middle,
+            MouseButton::Back => enigo::Button::Back,
+            MouseButton::Forward => enigo::Button::Forward,
             MouseButton::Unknown => enigo::Button::Left,
         }
     }
