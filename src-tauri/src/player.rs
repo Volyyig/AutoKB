@@ -212,12 +212,12 @@ fn execute_event(
         } => {
             if *delta_y != 0 {
                 enigo
-                    .scroll(*delta_y as i32, enigo::Axis::Vertical)
+                    .scroll(-*delta_y as i32, enigo::Axis::Vertical)
                     .map_err(|e| format!("Scroll error: {:?}", e))?;
             }
             if *delta_x != 0 {
                 enigo
-                    .scroll(*delta_x as i32, enigo::Axis::Horizontal)
+                    .scroll(-*delta_x as i32, enigo::Axis::Horizontal)
                     .map_err(|e| format!("Scroll error: {:?}", e))?;
             }
         }
