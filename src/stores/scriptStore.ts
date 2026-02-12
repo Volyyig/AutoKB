@@ -116,8 +116,9 @@ export const useScriptStore = defineStore('script', () => {
      */
     async function saveScript() {
         try {
+            const defaultDir = await invoke<string>('get_scripts_dir');
             const path = await save({
-                defaultPath: `${currentScript.value.name}.autokb`,
+                defaultPath: `${defaultDir}/${currentScript.value.name}.autokb`,
                 filters: [{ name: 'AutoKB Script', extensions: ['autokb'] }],
             });
 
@@ -135,7 +136,9 @@ export const useScriptStore = defineStore('script', () => {
      */
     async function loadScript() {
         try {
+            const defaultDir = await invoke<string>('get_scripts_dir');
             const path = await open({
+                defaultPath: defaultDir,
                 filters: [{ name: 'AutoKB Script', extensions: ['autokb'] }],
                 multiple: false,
             });
