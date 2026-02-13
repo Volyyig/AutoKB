@@ -1,4 +1,4 @@
-# ⚡ AutoKB
+# ⚡ AutoKeyButton
 
 AutoKB is a powerful, lightweight desktop automation tool built with **Tauri v2** and **Vue 3**. It allows you to record, edit, and play back keyboard and mouse sequences with ease, and manage complex macros via global hotkeys.
 
