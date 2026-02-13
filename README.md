@@ -1,71 +1,55 @@
 # ⚡ AutoKeyButton
 
-AutoKB is a powerful, lightweight desktop automation tool built with **Tauri v2** and **Vue 3**. It allows you to record, edit, and play back keyboard and mouse sequences with ease, and manage complex macros via global hotkeys.
+AutoKB is a powerful desktop automation tool designed to streamline repetitive tasks through intelligent input recording, playback, and macro management. Built with Rust and Tauri, it offers a high-performance, low-latency experience with a modern, glassmorphic UI.
 
-## ✨ Features
+---
 
-- **🔴 High-Precision Recording**: Capture keyboard and mouse events in real-time.
-- **▶️ Flexible Playback**: Replay recorded sequences with adjustable speed and delay.
-- **⌨️ Global Hotkeys**: Control your automation from anywhere in the OS.
-- **🔗 Macro Management**: Map specific triggers (keys/mouse) to complex action sequences.
-- **📊 Event Editor**: Fine-tune your steps, adjust delays, or delete unwanted events.
-- **🖥️ Minimal Overlay**: Visual feedback during recording and playback without obstructing your view.
-- **🌓 Modern UI**: A sleek, dark-themed interface built for efficiency.
+## ✨ Key Functionalities
 
-## 🛠️ Tech Stack
+### 🔴 Intelligent Recording
+- **Global Capture**: Record keyboard and mouse events across your entire system, not just within the application window.
+- **Smart Filtering**: Automatically handles key repeats and complex input sequences to ensure playback fidelity.
+- **Privacy First**: Recording status is clearly indicated via a global screen overlay.
 
-- **Backend**: Rust, [Tauri v2](https://tauri.app/)
-- **Frontend**: [Vue 3](https://vuejs.org/), TypeScript, [Vite](https://vitejs.dev/)
-- **State Management**: [Pinia](https://pinia.vuejs.org/)
-- **Libraries**: `rdev` (event capture), `enigo` (event simulation)
+### ⏯️ Precision Playback
+- **High Fidelity**: Reproduces recorded actions with millisecond precision.
+- **Speed Customization**: Adjust playback speed in real-time (from slow-motion for debugging to high-speed execution).
+- **Control Overlay**: A visual "Blue Mode" overlay indicates when playback is active, preventing accidental manual interference.
 
-## ⌨️ Global Hotkeys
+### 🔗 Advanced Macro Management
+- **Input Mapping**: Map complex event sequences to single key triggers or mouse buttons.
+- **Toggle Listeners**: Enable or disable global macro listeners with a single click.
+- **State Persistence**: Your macros and scripts are saved locally for instant access across sessions.
 
-| Key | Action |
+### 📝 Script Fine-Tuning
+- **Event List**: View every captured event in a detailed chronologically ordered list.
+- **In-Place Editing**: Modify delays between events or delete unwanted steps directly from the UI.
+- **Batch Scaling**: Scale all delays in a script simultaneously to speed up or slow down the entire workflow.
+
+---
+
+## ⌨️ Fast Controls
+
+Quickly manage your automation without switching windows:
+
+| Action | Hotkey |
 | :--- | :--- |
-| **F9** | Start / Stop Recording |
-| **F10** | Play / Stop Script |
-| **Esc** | Emergency Stop (Stop all recording/playback) |
+| **Start/Stop Recording** | `F9` |
+| **Start/Stop Playback** | `F10` |
+
+---
+
+## 🎨 Professional Interface
+- **Dark Mode by Default**: A sleek, focused interface using a GitHub-inspired dark theme.
+- **Real-time Status**: Dynamic indicators show exactly what the engine is doing (Recording, Playing, or Macro Active).
+- **System Tray Integration**: Run AutoKB in the background and access it instantly from your tray.
+
+---
 
 ## 🚀 Getting Started
 
-### Prerequisites
-
-- [Rust](https://www.rust-lang.org/tools/install)
-- [Node.js](https://nodejs.org/) (Project uses `pnpm` or `npm`)
-
-### Development
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-repo/autokb.git
-   cd autokb
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Run in development mode:
-   ```bash
-   npm run tauri dev
-   ```
-
-### Building
-
-To build the production application:
-```bash
-npm run tauri build
-```
-
-## 📖 Usage Guide
-
-1. **Recording**: Press `F9` or click the record button. The main window will hide, and a red overlay will appear. Perform your actions, then press `F9` again.
-2. **Editing**: Review the captured events in the "Event List". You can adjust individual delays or delete steps.
-3. **Playback**: Press `F10` or click play. A blue overlay signals active playback.
-4. **Macros**: Use the Macro Panel to create custom mappings, like triggering a complex combo with a single key press.
-
-## ⚖️ License
-
-Distributed under the MIT License. See `LICENSE` for more information.
+1. **Launch AutoKB**.
+2. Press **`F9`** to start recording your workflow.
+3. Perform the tasks you wish to automate.
+4. Press **`F9`** again to finalize the script.
+5. Use the **Event List** to refine your actions or press **`F10`** to test the playback.
