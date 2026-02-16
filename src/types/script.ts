@@ -60,8 +60,14 @@ export interface MacroDefinition {
     id: string;
     name: string;
     trigger: MacroTrigger;
-    events: ScriptEvent[];
+    script_path: string;
     enabled: boolean;
+}
+
+// Saved script info
+export interface SavedScript {
+    name: string;
+    path: string;
 }
 
 // Loop configuration
@@ -107,39 +113,22 @@ export function getKeyDisplay(key: KeyboardKey): string {
     return key.value;
 }
 
-export function getEventIcon(event: ScriptEvent): string {
-    switch (event.event_type) {
-        case 'KeyPress':
-        case 'KeyRelease':
-            return '⌨️';
-        case 'MousePress':
-        case 'MouseRelease':
-            return '🖱️';
-        case 'MouseMove':
-            return '↗️';
-        case 'MouseScroll':
-            return '⚡';
-        default:
-            return '❓';
-    }
-}
-
 export function getEventDescription(event: ScriptEvent): string {
     switch (event.event_type) {
         case 'KeyPress':
-            return `按下 ${getKeyDisplay(event.key)}`;
+            return `Key Down: ${getKeyDisplay(event.key)}`;
         case 'KeyRelease':
-            return `释放 ${getKeyDisplay(event.key)}`;
+            return `Key Up: ${getKeyDisplay(event.key)}`;
         case 'MousePress':
-            return `点击 ${event.button} (${Math.round(event.x)}, ${Math.round(event.y)})`;
+            return `Mouse Down: ${event.button}`;
         case 'MouseRelease':
-            return `释放 ${event.button} (${Math.round(event.x)}, ${Math.round(event.y)})`;
+            return `Mouse Up: ${event.button}`;
         case 'MouseMove':
-            return `移动到 (${Math.round(event.x)}, ${Math.round(event.y)})`;
+            return `Move: (${Math.round(event.x)}, ${Math.round(event.y)})`;
         case 'MouseScroll':
-            return `滚动 (${event.delta_x}, ${event.delta_y})`;
+            return `Scroll: (${event.delta_x}, ${event.delta_y})`;
         default:
-            return '未知事件';
+            return 'Unknown Event';
     }
 }
 
@@ -152,7 +141,7 @@ export function formatDuration(ms: number): string {
 
 export function createEmptyScript(): Script {
     return {
-        name: '未命名脚本',
+        name: 'Untitled Script',
         description: '',
         created_at: new Date().toISOString(),
         modified_at: new Date().toISOString(),

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useScriptStore } from '../stores/scriptStore';
-import { getEventIcon, getEventDescription, formatDuration } from '../types/script';
+import { getEventDescription, formatDuration } from '../types/script';
 
 const store = useScriptStore();
 
@@ -13,9 +13,17 @@ function selectEvent(index: number) {
     <div class="event-list">
         <!-- Empty State -->
         <div v-if="!store.hasEvents" class="empty-state">
-            <div class="empty-icon">📭</div>
-            <p>暂无录制事件</p>
-            <p class="empty-hint">按 F9 或点击"开始录制"按钮开始录制</p>
+            <div class="empty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+            </div>
+            <p>No events recorded</p>
+            <p class="empty-hint">Press F9 or click "Start Recording"</p>
         </div>
 
         <!-- Event Items -->
@@ -23,7 +31,31 @@ function selectEvent(index: number) {
             <div v-for="(event, index) in store.currentScript.events" :key="index" class="event-item"
                 :class="{ selected: store.selectedEventIndex === index }" @click="selectEvent(index)">
                 <span class="event-index">{{ index + 1 }}</span>
-                <span class="event-icon">{{ getEventIcon(event) }}</span>
+                <span class="event-icon">
+                    <!-- Key Events -->
+                    <svg v-if="event.event_type.startsWith('Key')" xmlns="http://www.w3.org/2000/svg" width="16"
+                        height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
+                        <line x1="7" y1="15" x2="7" y2="15"></line>
+                        <line x1="11" y1="15" x2="13" y2="15"></line>
+                    </svg>
+                    <!-- Mouse Events -->
+                    <svg v-else-if="event.event_type.startsWith('Mouse')" xmlns="http://www.w3.org/2000/svg" width="16"
+                        height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="7" y="2" width="10" height="20" rx="5" ry="5"></rect>
+                        <line x1="12" y1="6" x2="12" y2="10"></line>
+                    </svg>
+                    <!-- Fallback -->
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                </span>
                 <div class="event-info">
                     <span class="event-type">{{ event.event_type }}</span>
                     <span class="event-desc">{{ getEventDescription(event) }}</span>

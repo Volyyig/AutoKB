@@ -218,14 +218,13 @@ fn stop_macro_listener() {
     macro_trigger::stop_macro_listener();
 }
 
-/// Create a simple input mapping macro
+/// Create a macro binding
 #[tauri::command]
-fn create_input_mapping(
+fn create_macro_binding(
     name: String,
     trigger_type: String,
     trigger_value: String,
-    action_type: String,
-    action_value: String,
+    script_path: String,
 ) -> Result<MacroDefinition, String> {
     // Parse trigger
     let trigger = match trigger_type.as_str() {
@@ -249,50 +248,38 @@ fn create_input_mapping(
         _ => return Err("Invalid trigger type".to_string()),
     };
 
-    // Parse action events
-    let events = match action_type.as_str() {
-        "mouse_click" => {
-            let button = match action_value.as_str() {
-                "left" => MouseButton::Left,
-                "right" => MouseButton::Right,
-                "middle" => MouseButton::Middle,
-                _ => return Err("Invalid mouse button".to_string()),
-            };
-            vec![
-                ScriptEvent::MousePress {
-                    button,
-                    x: 0.0,
-                    y: 0.0,
-                    delay_ms: 0,
-                },
-                ScriptEvent::MouseRelease {
-                    button,
-                    x: 0.0,
-                    y: 0.0,
-                    delay_ms: 50,
-                },
-            ]
-        }
-        "key_press" => {
-            let key = if action_value.len() == 1 {
-                KeyboardKey::Char(action_value.chars().next().unwrap())
-            } else {
-                KeyboardKey::Special(action_value)
-            };
-            vec![
-                ScriptEvent::KeyPress {
-                    key: key.clone(),
-                    delay_ms: 0,
-                },
-                ScriptEvent::KeyRelease { key, delay_ms: 50 },
-            ]
-        }
-        _ => return Err("Invalid action type".to_string()),
-    };
-
-    let macro_def = macro_trigger::create_simple_macro(name, trigger, events);
+    let macro_def = macro_trigger::create_macro_binding(name, trigger, script_path);
     macro_trigger::add_macro(macro_def.clone());
     Ok(macro_def)
+}
+
+#[derive(serde::Serialize)]
+struct SavedScript {
+    name: String,
+    path: String,
+}
+
+/// List saved scripts
+#[tauri::command]
+fn list_saved_scripts(app: tauri::AppHandle) -> Result<Vec<SavedScript>, String> {
+    let script_dir_str = get_scripts_dir(app)?;
+    let entries = fs::read_dir(script_dir_str).map_err(|e| e.to_string())?;
+
+    let mut scripts = Vec::new();
+    for entry in entries {
+        if let Ok(entry) = entry {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("autokb") {
+                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
+                    scripts.push(SavedScript {
+                        name: name.to_string(),
+                        path: path.to_string_lossy().to_string(),
+                    });
+                }
+            }
+        }
+    }
+    Ok(scripts)
 }
 
 // ============================================================================
@@ -566,7 +553,8 @@ pub fn run() {
             toggle_macro,
             start_macro_listener,
             stop_macro_listener,
-            create_input_mapping,
+            create_macro_binding,
+            list_saved_scripts,
             // Script editing
             update_event_delay,
             delete_event,

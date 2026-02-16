@@ -2,10 +2,11 @@
 //! Listener moved to input_manager
 
 use crate::player;
-use crate::script::{KeyboardKey, MacroDefinition, MacroTrigger, MouseButton, ScriptEvent};
+use crate::script::{MacroDefinition, MacroTrigger, Script};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -66,11 +67,22 @@ impl MacroState {
         }
 
         if let Some(macro_def) = self.find_by_trigger(trigger) {
-            if macro_def.enabled && !macro_def.events.is_empty() {
-                // Execute macro events
-                let events = macro_def.events.clone();
+            if macro_def.enabled && !macro_def.script_path.is_empty() {
+                // Execute macro script
+                let path = macro_def.script_path.clone();
+
+                // Spawn thread to avoid blocking input hook
                 thread::spawn(move || {
-                    let _ = player::play_events(events, 1.0);
+                    if let Ok(content) = fs::read_to_string(&path) {
+                        match serde_json::from_str::<Script>(&content) {
+                            Ok(script) => {
+                                let _ = player::play_script(script);
+                            }
+                            Err(e) => eprintln!("Failed to parse script {}: {}", path, e),
+                        }
+                    } else {
+                        eprintln!("Failed to read script: {}", path);
+                    }
                 });
                 return true;
             }
@@ -137,17 +149,17 @@ pub fn toggle_macro(id: &str, enabled: bool) {
     }
 }
 
-/// Create a simple macro: trigger one input with another
-pub fn create_simple_macro(
+/// Create a new macro binding
+pub fn create_macro_binding(
     name: String,
     trigger: MacroTrigger,
-    action_events: Vec<ScriptEvent>,
+    script_path: String,
 ) -> MacroDefinition {
     MacroDefinition {
         id: uuid_simple(),
         name,
         trigger,
-        events: action_events,
+        script_path,
         enabled: true,
     }
 }

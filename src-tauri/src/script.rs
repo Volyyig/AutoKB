@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Mouse button types
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum MouseButton {
     Left,
@@ -43,7 +43,7 @@ impl From<MouseButton> for enigo::Button {
 }
 
 /// Keyboard key representation
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(tag = "type", content = "value")]
 pub enum KeyboardKey {
     /// Character key (a-z, 0-9, symbols)
@@ -199,7 +199,7 @@ impl ScriptEvent {
 }
 
 /// Macro trigger condition - what triggers the macro
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(tag = "trigger_type")]
 pub enum MacroTrigger {
     /// Triggered by pressing a keyboard key
@@ -217,8 +217,8 @@ pub struct MacroDefinition {
     pub name: String,
     /// What triggers this macro
     pub trigger: MacroTrigger,
-    /// Events to execute when triggered
-    pub events: Vec<ScriptEvent>,
+    /// Path to the script file to execute
+    pub script_path: String,
     /// Whether the macro is enabled
     pub enabled: bool,
 }

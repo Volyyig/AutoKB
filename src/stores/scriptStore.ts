@@ -6,7 +6,7 @@ import { ref, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { save, open } from '@tauri-apps/plugin-dialog';
-import type { Script, ScriptEvent, MacroDefinition, AppState, HotkeyEvent } from '../types/script';
+import type { Script, ScriptEvent, MacroDefinition, AppState, HotkeyEvent, SavedScript } from '../types/script';
 import { createEmptyScript } from '../types/script';
 
 export const useScriptStore = defineStore('script', () => {
@@ -16,8 +16,10 @@ export const useScriptStore = defineStore('script', () => {
     const isPlaying = ref(false);
     const isMacroActive = ref(false);
     const macros = ref<MacroDefinition[]>([]);
+    const savedScripts = ref<SavedScript[]>([]);
     const selectedEventIndex = ref<number | null>(null);
-    const statusMessage = ref('就绪');
+    const statusMessage = ref('Ready');
+    const currentView = ref<'home' | 'macro-editor'>('home');
 
     // Computed
     const eventCount = computed(() => currentScript.value.events.length);
@@ -36,9 +38,9 @@ export const useScriptStore = defineStore('script', () => {
             await invoke('start_recording');
             isRecording.value = true;
             currentScript.value.events = [];
-            statusMessage.value = '录制中... 按 F9 停止';
+            statusMessage.value = 'Recording... Press F9 to Stop';
         } catch (error) {
-            statusMessage.value = `录制失败: ${error}`;
+            statusMessage.value = `Recording Failed: ${error}`;
         }
     }
 
@@ -51,9 +53,9 @@ export const useScriptStore = defineStore('script', () => {
             currentScript.value.events = events;
             currentScript.value.modified_at = new Date().toISOString();
             isRecording.value = false;
-            statusMessage.value = `录制完成，共 ${events.length} 个事件`;
+            statusMessage.value = `Recording Complete (${events.length} events)`;
         } catch (error) {
-            statusMessage.value = `停止录制失败: ${error}`;
+            statusMessage.value = `Stop Recording Failed: ${error}`;
             isRecording.value = false;
         }
     }
@@ -74,16 +76,16 @@ export const useScriptStore = defineStore('script', () => {
      */
     async function startPlayback() {
         if (!hasEvents.value) {
-            statusMessage.value = '没有可回放的事件';
+            statusMessage.value = 'No events to play';
             return;
         }
 
         try {
             await invoke('play_script', { script: currentScript.value });
             isPlaying.value = true;
-            statusMessage.value = '回放中... 按 F10 停止';
+            statusMessage.value = 'Playing... Press F10 to Stop';
         } catch (error) {
-            statusMessage.value = `回放失败: ${error}`;
+            statusMessage.value = `Playback Failed: ${error}`;
         }
     }
 
@@ -94,9 +96,9 @@ export const useScriptStore = defineStore('script', () => {
         try {
             await invoke('stop_playback');
             isPlaying.value = false;
-            statusMessage.value = '回放已停止';
+            statusMessage.value = 'Playback Stopped';
         } catch (error) {
-            statusMessage.value = `停止回放失败: ${error}`;
+            statusMessage.value = `Stop Playback Failed: ${error}`;
         }
     }
 
@@ -124,10 +126,11 @@ export const useScriptStore = defineStore('script', () => {
 
             if (path) {
                 await invoke('save_script', { script: currentScript.value, path });
-                statusMessage.value = `已保存到 ${path}`;
+                statusMessage.value = `Saved to ${path}`;
+                await listSavedScripts(); // Refresh saved scripts list
             }
         } catch (error) {
-            statusMessage.value = `保存失败: ${error}`;
+            statusMessage.value = `Save Failed: ${error}`;
         }
     }
 
@@ -146,10 +149,10 @@ export const useScriptStore = defineStore('script', () => {
             if (path) {
                 const script = await invoke<Script>('load_script', { path });
                 currentScript.value = script;
-                statusMessage.value = `已加载 ${script.name}`;
+                statusMessage.value = `Loaded ${script.name}`;
             }
         } catch (error) {
-            statusMessage.value = `加载失败: ${error}`;
+            statusMessage.value = `Load Failed: ${error}`;
         }
     }
 
@@ -222,6 +225,17 @@ export const useScriptStore = defineStore('script', () => {
     }
 
     /**
+     * List saved scripts
+     */
+    async function listSavedScripts() {
+        try {
+            savedScripts.value = await invoke<SavedScript[]>('list_saved_scripts');
+        } catch (error) {
+            console.error('Failed to list saved scripts:', error);
+        }
+    }
+
+    /**
      * Toggle macro listener
      */
     async function toggleMacroListener() {
@@ -229,39 +243,37 @@ export const useScriptStore = defineStore('script', () => {
             if (isMacroActive.value) {
                 await invoke('stop_macro_listener');
                 isMacroActive.value = false;
-                statusMessage.value = '宏监听已停止';
+                statusMessage.value = 'Macro Listener Stopped';
             } else {
                 await invoke('start_macro_listener');
                 isMacroActive.value = true;
-                statusMessage.value = '宏监听已启动';
+                statusMessage.value = 'Macro Listener Active';
             }
         } catch (error) {
-            statusMessage.value = `宏监听切换失败: ${error}`;
+            statusMessage.value = `Macro Toggle Failed: ${error}`;
         }
     }
 
     /**
-     * Create input mapping macro
+     * Create macro binding
      */
-    async function createInputMapping(
-        name: string,
-        triggerType: string,
-        triggerValue: string,
-        actionType: string,
-        actionValue: string
+    async function createMacroBinding(
+        name: String,
+        triggerType: String,
+        triggerValue: String,
+        scriptPath: String
     ) {
         try {
-            const macro = await invoke<MacroDefinition>('create_input_mapping', {
+            const macro = await invoke<MacroDefinition>('create_macro_binding', {
                 name,
                 triggerType,
                 triggerValue,
-                actionType,
-                actionValue,
+                scriptPath,
             });
             macros.value.push(macro);
-            statusMessage.value = `宏 "${name}" 已创建`;
+            statusMessage.value = `Macro "${name}" Created`;
         } catch (error) {
-            statusMessage.value = `创建宏失败: ${error}`;
+            statusMessage.value = `Create Macro Failed: ${error}`;
         }
     }
 
@@ -272,9 +284,9 @@ export const useScriptStore = defineStore('script', () => {
         try {
             await invoke('remove_macro', { id });
             macros.value = macros.value.filter(m => m.id !== id);
-            statusMessage.value = '宏已删除';
+            statusMessage.value = 'Macro Deleted';
         } catch (error) {
-            statusMessage.value = `删除宏失败: ${error}`;
+            statusMessage.value = `Delete Macro Failed: ${error}`;
         }
     }
 
@@ -299,7 +311,7 @@ export const useScriptStore = defineStore('script', () => {
     function clearScript() {
         currentScript.value = createEmptyScript();
         selectedEventIndex.value = null;
-        statusMessage.value = '脚本已清空';
+        statusMessage.value = 'Script Cleared';
     }
 
     /**
@@ -329,13 +341,13 @@ export const useScriptStore = defineStore('script', () => {
             switch (payload.action) {
                 case 'recording-started':
                     currentScript.value.events = [];
-                    statusMessage.value = '录制中... 按 F9 停止';
+                    statusMessage.value = 'Recording... Press F9 to Stop';
                     break;
                 case 'recording-stopped':
                     // Fetch recorded events
                     invoke<ScriptEvent[]>('get_recorded_events').then(events => {
                         currentScript.value.events = events;
-                        statusMessage.value = `录制完成，共 ${events.length} 个事件`;
+                        statusMessage.value = `Recording Complete (${events.length} events)`;
                     });
                     break;
                 case 'playback-requested':
@@ -345,10 +357,10 @@ export const useScriptStore = defineStore('script', () => {
                     }
                     break;
                 case 'playback-stopped':
-                    statusMessage.value = '回放已停止';
+                    statusMessage.value = 'Playback Stopped';
                     break;
                 case 'emergency-stop':
-                    statusMessage.value = '已紧急停止';
+                    statusMessage.value = 'Emergency Stop';
                     break;
             }
         });
@@ -356,6 +368,7 @@ export const useScriptStore = defineStore('script', () => {
         // Sync initial state
         await syncState();
         await loadMacros();
+        await listSavedScripts();
     }
 
     /**
@@ -420,8 +433,10 @@ export const useScriptStore = defineStore('script', () => {
         isPlaying,
         isMacroActive,
         macros,
+        savedScripts,
         selectedEventIndex,
         statusMessage,
+        currentView,
         // Computed
         eventCount,
         totalDuration,
@@ -441,8 +456,9 @@ export const useScriptStore = defineStore('script', () => {
         updateLoopConfig,
         updateSpeed,
         loadMacros,
+        listSavedScripts,
         toggleMacroListener,
-        createInputMapping,
+        createMacroBinding,
         removeMacro,
         toggleMacroEnabled,
         clearScript,
