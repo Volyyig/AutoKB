@@ -9,6 +9,13 @@ import { save, open } from '@tauri-apps/plugin-dialog';
 import type { Script, ScriptEvent, MacroDefinition, AppState, HotkeyEvent, SavedScript } from '../types/script';
 import { createEmptyScript } from '../types/script';
 
+export interface Notification {
+    id: number;
+    message: string;
+    type: 'success' | 'error' | 'info';
+    duration: number;
+}
+
 export const useScriptStore = defineStore('script', () => {
     // State
     const currentScript = ref<Script>(createEmptyScript());
@@ -19,7 +26,9 @@ export const useScriptStore = defineStore('script', () => {
     const savedScripts = ref<SavedScript[]>([]);
     const selectedEventIndex = ref<number | null>(null);
     const statusMessage = ref('Ready');
-    const currentView = ref<'home' | 'macro-editor'>('home');
+    const currentView = ref<'home' | 'macro-editor' | 'visual-editor'>('home');
+    const notifications = ref<Notification[]>([]);
+    let nextNotificationId = 0;
 
     // Computed
     const eventCount = computed(() => currentScript.value.events.length);
@@ -29,6 +38,31 @@ export const useScriptStore = defineStore('script', () => {
     const hasEvents = computed(() => eventCount.value > 0);
 
     // Actions
+
+    /**
+     * Show a notification toast
+     */
+    function showNotification(message: string, type: 'success' | 'error' | 'info' = 'info', duration = 3000) {
+        const id = nextNotificationId++;
+        const notification: Notification = { id, message, type, duration };
+        notifications.value.push(notification);
+
+        if (duration > 0) {
+            setTimeout(() => {
+                removeNotification(id);
+            }, duration);
+        }
+    }
+
+    /**
+     * Remove a notification by ID
+     */
+    function removeNotification(id: number) {
+        const index = notifications.value.findIndex(n => n.id === id);
+        if (index !== -1) {
+            notifications.value.splice(index, 1);
+        }
+    }
 
     /**
      * Start recording events
@@ -465,5 +499,9 @@ export const useScriptStore = defineStore('script', () => {
         syncState,
         init,
         handleFrontendEvent,
+        // Notifications
+        notifications,
+        showNotification,
+        removeNotification
     };
 });

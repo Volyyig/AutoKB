@@ -5,6 +5,8 @@ import ControlBar from './components/ControlBar.vue';
 import EventList from './components/EventList.vue';
 import ParamEditor from './components/ParamEditor.vue';
 import MacroEditor from './components/MacroEditor.vue';
+import VisualScriptEditor from './components/VisualScriptEditor.vue';
+import ToastNotification from './components/ToastNotification.vue';
 import { useScriptStore } from './stores/scriptStore';
 import { formatDuration } from './types/script';
 
@@ -86,7 +88,6 @@ onUnmounted(() => {
         <div class="shortcuts">
           <span class="shortcut"><strong>F9</strong> Start/Stop Recording</span>
           <span class="shortcut"><strong>F10</strong> Start/Stop Playback</span>
-          <span class="shortcut"><strong>Esc</strong> Emergency Stop</span>
         </div>
       </footer>
     </div>
@@ -95,6 +96,14 @@ onUnmounted(() => {
     <Transition name="slide-up">
       <MacroEditor v-if="store.currentView === 'macro-editor'" />
     </Transition>
+
+    <!-- Visual Script Editor Overlay -->
+    <Transition name="slide-up">
+      <VisualScriptEditor v-if="store.currentView === 'visual-editor'" />
+    </Transition>
+
+    <!-- Global Toast Notifications -->
+    <ToastNotification />
   </div>
 </template>
 
