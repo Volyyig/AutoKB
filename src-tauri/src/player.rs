@@ -140,6 +140,7 @@ fn execute_event(
     enigo: &mut Enigo,
     event: &ScriptEvent,
     speed_multiplier: f64,
+    use_recorded_position: bool,
 ) -> Result<(), String> {
     // Calculate adjusted delay
     let delay_ms = (event.delay_ms() as f64 / speed_multiplier) as u64;
@@ -185,19 +186,23 @@ fn execute_event(
             }
         }
         ScriptEvent::MousePress { button, x, y, .. } => {
-            // Move to position first
-            enigo
-                .move_mouse(*x as i32, *y as i32, enigo::Coordinate::Abs)
-                .map_err(|e| format!("Mouse move error: {:?}", e))?;
+            if use_recorded_position {
+                // Move to position first
+                enigo
+                    .move_mouse(*x as i32, *y as i32, enigo::Coordinate::Abs)
+                    .map_err(|e| format!("Mouse move error: {:?}", e))?;
+            }
             // Then press
             enigo
                 .button((*button).into(), enigo::Direction::Press)
                 .map_err(|e| format!("Mouse press error: {:?}", e))?;
         }
         ScriptEvent::MouseRelease { button, x, y, .. } => {
-            enigo
-                .move_mouse(*x as i32, *y as i32, enigo::Coordinate::Abs)
-                .map_err(|e| format!("Mouse move error: {:?}", e))?;
+            if use_recorded_position {
+                enigo
+                    .move_mouse(*x as i32, *y as i32, enigo::Coordinate::Abs)
+                    .map_err(|e| format!("Mouse move error: {:?}", e))?;
+            }
             enigo
                 .button((*button).into(), enigo::Direction::Release)
                 .map_err(|e| format!("Mouse release error: {:?}", e))?;
@@ -255,6 +260,14 @@ pub fn play_script(script: Script) -> Result<(), String> {
         let loop_count = script.loop_config.count;
         let is_infinite = loop_count == 0;
 
+        // Check if script has any mouse move events
+        // If no mouse moves are present, we use the current mouse position for clicks
+        // instead of the recorded coordinates (which might be 0,0)
+        let has_mouse_moves = script
+            .events
+            .iter()
+            .any(|e| matches!(e, ScriptEvent::MouseMove { .. }));
+
         loop {
             let current_iteration = state.increment_loop();
 
@@ -271,7 +284,9 @@ pub fn play_script(script: Script) -> Result<(), String> {
             for (index, event) in script.events.iter().enumerate() {
                 state.set_event_index(index);
 
-                if let Err(e) = execute_event(&mut enigo, event, script.speed_multiplier) {
+                if let Err(e) =
+                    execute_event(&mut enigo, event, script.speed_multiplier, has_mouse_moves)
+                {
                     eprintln!("Playback error: {}", e);
                     state.finish();
                     return;
