@@ -51,6 +51,8 @@
                             <option value="left">Left Button</option>
                             <option value="right">Right Button</option>
                             <option value="middle">Middle Button</option>
+                            <option value="back">Back Button</option>
+                            <option value="forward">Forward Button</option>
                         </select>
                     </div>
                 </div>

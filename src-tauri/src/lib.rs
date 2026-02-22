@@ -233,6 +233,8 @@ fn create_macro_binding(
                 "left" => MouseButton::Left,
                 "right" => MouseButton::Right,
                 "middle" => MouseButton::Middle,
+                "back" => MouseButton::Back,
+                "forward" => MouseButton::Forward,
                 _ => return Err("Invalid mouse button".to_string()),
             };
             MacroTrigger::MousePress { button }
@@ -451,8 +453,8 @@ pub fn run() {
                     .register(Shortcut::new(None, Code::F9))?;
                 app.global_shortcut()
                     .register(Shortcut::new(None, Code::F10))?;
-                app.global_shortcut()
-                    .register(Shortcut::new(None, Code::Escape))?;
+                // app.global_shortcut()
+                //     .register(Shortcut::new(None, Code::Escape))?;
             }
 
             // Initialize unified input manager (handles hotkeys, recording, macros)

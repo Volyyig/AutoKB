@@ -52,7 +52,7 @@ pub fn init(app_handle: AppHandle) {
         let manager = &INPUT_MANAGER;
 
         if let Err(error) = rdev::listen(move |event| {
-            println!("{:?}", event); // Debug print removed
+            // println!("{:?}", event); // Debug print removed
             handle_event(event, manager);
         }) {
             eprintln!("Input listener error: {:?}", error);

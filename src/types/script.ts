@@ -4,7 +4,7 @@
  */
 
 // Mouse button types
-export type MouseButton = 'left' | 'right' | 'middle' | 'unknown';
+export type MouseButton = 'left' | 'right' | 'middle' | 'back' | 'forward';
 
 // Keyboard key representation
 export type KeyboardKey =
