@@ -23,13 +23,13 @@ onMounted(async () => {
   await invoke('release_overlay_window');
 
   await store.init();
-  window.addEventListener('keydown', handleKeydown);
-  window.addEventListener('keyup', (e) => store.handleFrontendEvent(e));
+  // window.addEventListener('keydown', handleKeydown);
+  // window.addEventListener('keyup', (e) => store.handleFrontendEvent(e));
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
-  window.removeEventListener('keyup', (e) => store.handleFrontendEvent(e)); // Ensure consistent removal
+  // window.removeEventListener('keydown', handleKeydown);
+  // window.removeEventListener('keyup', (e) => store.handleFrontendEvent(e)); // Ensure consistent removal
 });
 </script>
 

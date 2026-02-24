@@ -95,11 +95,67 @@ pub fn on_playback_finish() {
 }
 
 fn handle_event(event: Event, _manager: &InputManager) {
-    // 1. Hotkeys are now handled by tauri-plugin-global-shortcut in lib.rs
-    // This removes hotkey-related keys from this low-level listener to avoid conflicts
+    // 1. Handle Hotkeys
     let hotkey_state = crate::hotkey::get_state();
-    if let EventType::KeyPress(key) | EventType::KeyRelease(key) = event.event_type {
-        if hotkey_state.get_all_keys().contains(&key) {
+    if let EventType::KeyPress(key) = event.event_type {
+        if key == hotkey_state.get_recording_key() {
+            // Toggle recording
+            let app_handle = _manager.app_handle.lock().clone();
+            if let Some(app) = app_handle {
+                thread::spawn(move || {
+                    if recorder::is_recording() {
+                        let _ = crate::stop_recording(app.clone());
+                        emit_event(
+                            "hotkey-event",
+                            crate::hotkey::HotkeyEvent {
+                                action: "recording-stopped".to_string(),
+                                recording: false,
+                                playing: player::is_playing(),
+                            },
+                        );
+                    } else if !player::is_playing() {
+                        let _ = crate::start_recording(app.clone());
+                        emit_event(
+                            "hotkey-event",
+                            crate::hotkey::HotkeyEvent {
+                                action: "recording-started".to_string(),
+                                recording: true,
+                                playing: false,
+                            },
+                        );
+                    }
+                });
+            }
+            return;
+        }
+
+        if key == hotkey_state.get_playback_key() {
+            // Toggle playback
+            let app_handle = _manager.app_handle.lock().clone();
+            if let Some(app) = app_handle {
+                thread::spawn(move || {
+                    if player::is_playing() {
+                        crate::stop_playback(app.clone());
+                        emit_event(
+                            "hotkey-event",
+                            crate::hotkey::HotkeyEvent {
+                                action: "playback-stopped".to_string(),
+                                recording: recorder::is_recording(),
+                                playing: false,
+                            },
+                        );
+                    } else {
+                        emit_event(
+                            "hotkey-event",
+                            crate::hotkey::HotkeyEvent {
+                                action: "playback-requested".to_string(),
+                                recording: recorder::is_recording(),
+                                playing: false,
+                            },
+                        );
+                    }
+                });
+            }
             return;
         }
     }

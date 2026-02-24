@@ -1,5 +1,5 @@
 //! Hotkey module - global hotkey state management
-//! State only (listener moved to input_manager)
+//! State only (listener in input_manager)
 
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -9,8 +9,8 @@ use std::sync::Arc;
 static HOTKEY_STATE: Lazy<Arc<HotkeyState>> = Lazy::new(|| Arc::new(HotkeyState::new()));
 
 /// Hotkey state manager
-/// Attention: Hotkeys are now handled by tauri-plugin-global-shortcut in lib.rs
-/// This module is only used for state management
+/// Hotkeys are handled by the low-level listener in `input_manager.rs`
+/// This module is used for state management and shared types
 pub struct HotkeyState {
     /// Recording hotkey (default: F9)
     recording_key: Mutex<rdev::Key>,
@@ -35,10 +35,7 @@ impl HotkeyState {
     }
 
     pub fn get_all_keys(&self) -> Vec<rdev::Key> {
-        vec![
-            self.get_recording_key(),
-            self.get_playback_key(),
-        ]
+        vec![self.get_recording_key(), self.get_playback_key()]
     }
 }
 
