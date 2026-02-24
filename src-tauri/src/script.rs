@@ -140,60 +140,28 @@ impl From<rdev::Key> for KeyboardKey {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "event_type")]
 pub enum ScriptEvent {
+    /// Independent delay event / wait node
+    Delay { duration_ms: u64 },
     /// Key press event
-    KeyPress {
-        key: KeyboardKey,
-        /// Delay in milliseconds before this event
-        delay_ms: u64,
-    },
+    KeyPress { key: KeyboardKey },
     /// Key release event
-    KeyRelease { key: KeyboardKey, delay_ms: u64 },
+    KeyRelease { key: KeyboardKey },
     /// Mouse button press
-    MousePress {
-        button: MouseButton,
-        x: f64,
-        y: f64,
-        delay_ms: u64,
-    },
+    MousePress { button: MouseButton, x: f64, y: f64 },
     /// Mouse button release
-    MouseRelease {
-        button: MouseButton,
-        x: f64,
-        y: f64,
-        delay_ms: u64,
-    },
+    MouseRelease { button: MouseButton, x: f64, y: f64 },
     /// Mouse movement
-    MouseMove { x: f64, y: f64, delay_ms: u64 },
+    MouseMove { x: f64, y: f64 },
     /// Mouse scroll
-    MouseScroll {
-        delta_x: i64,
-        delta_y: i64,
-        delay_ms: u64,
-    },
+    MouseScroll { delta_x: i64, delta_y: i64 },
 }
 
 impl ScriptEvent {
-    /// Get the delay in milliseconds for this event
-    pub fn delay_ms(&self) -> u64 {
+    /// Get the duration if this is a delay event
+    pub fn get_delay_ms(&self) -> u64 {
         match self {
-            ScriptEvent::KeyPress { delay_ms, .. } => *delay_ms,
-            ScriptEvent::KeyRelease { delay_ms, .. } => *delay_ms,
-            ScriptEvent::MousePress { delay_ms, .. } => *delay_ms,
-            ScriptEvent::MouseRelease { delay_ms, .. } => *delay_ms,
-            ScriptEvent::MouseMove { delay_ms, .. } => *delay_ms,
-            ScriptEvent::MouseScroll { delay_ms, .. } => *delay_ms,
-        }
-    }
-
-    /// Set the delay in milliseconds for this event
-    pub fn set_delay_ms(&mut self, new_delay: u64) {
-        match self {
-            ScriptEvent::KeyPress { delay_ms, .. } => *delay_ms = new_delay,
-            ScriptEvent::KeyRelease { delay_ms, .. } => *delay_ms = new_delay,
-            ScriptEvent::MousePress { delay_ms, .. } => *delay_ms = new_delay,
-            ScriptEvent::MouseRelease { delay_ms, .. } => *delay_ms = new_delay,
-            ScriptEvent::MouseMove { delay_ms, .. } => *delay_ms = new_delay,
-            ScriptEvent::MouseScroll { delay_ms, .. } => *delay_ms = new_delay,
+            ScriptEvent::Delay { duration_ms } => *duration_ms,
+            _ => 0,
         }
     }
 }
@@ -297,7 +265,13 @@ impl Script {
 
     /// Get total duration in milliseconds
     pub fn total_duration_ms(&self) -> u64 {
-        self.events.iter().map(|e| e.delay_ms()).sum()
+        self.events
+            .iter()
+            .map(|e| match e {
+                ScriptEvent::Delay { duration_ms } => *duration_ms,
+                _ => 0,
+            })
+            .sum()
     }
 }
 

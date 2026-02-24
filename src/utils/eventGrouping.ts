@@ -8,6 +8,7 @@ export interface EventGroup {
 }
 
 export function getEventTypeCategory(event: ScriptEvent): string {
+    if (event.event_type === 'Delay') return 'Delay';
     if (event.event_type === 'MouseMove') return 'MouseMove';
     if (event.event_type === 'MouseScroll') return 'MouseScroll';
     return event.event_type;
@@ -15,6 +16,7 @@ export function getEventTypeCategory(event: ScriptEvent): string {
 
 export function formatGroupTitle(type: string): string {
     switch (type) {
+        case 'Delay': return 'Wait Time';
         case 'MouseMove': return 'Mouse Movements';
         case 'MouseScroll': return 'Scroll Events';
         case 'KeyPress': return 'Key Presses';

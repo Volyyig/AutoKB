@@ -296,7 +296,13 @@ fn update_event_delay(
     delay_ms: u64,
 ) -> Vec<ScriptEvent> {
     if let Some(event) = events.get_mut(index) {
-        event.set_delay_ms(delay_ms);
+        if let ScriptEvent::Delay { duration_ms } = event {
+            *duration_ms = delay_ms;
+        } else {
+            // If it's not a delay event, maybe we should insert one?
+            // For now, let's just ignore or let the frontend handle the logic of where to send it.
+            // Actually, if we want to change "delay" of an action, we should check if previous event is Delay.
+        }
     }
     events
 }
@@ -314,8 +320,9 @@ fn delete_event(mut events: Vec<ScriptEvent>, index: usize) -> Vec<ScriptEvent> 
 #[tauri::command]
 fn scale_delays(mut events: Vec<ScriptEvent>, factor: f64) -> Vec<ScriptEvent> {
     for event in &mut events {
-        let new_delay = (event.delay_ms() as f64 * factor) as u64;
-        event.set_delay_ms(new_delay);
+        if let ScriptEvent::Delay { duration_ms } = event {
+            *duration_ms = (*duration_ms as f64 * factor) as u64;
+        }
     }
     events
 }

@@ -14,40 +14,38 @@ export type KeyboardKey =
 // Single input event types
 export type ScriptEvent =
     | {
+        event_type: 'Delay';
+        duration_ms: number;
+    }
+    | {
         event_type: 'KeyPress';
         key: KeyboardKey;
-        delay_ms: number;
     }
     | {
         event_type: 'KeyRelease';
         key: KeyboardKey;
-        delay_ms: number;
     }
     | {
         event_type: 'MousePress';
         button: MouseButton;
         x: number;
         y: number;
-        delay_ms: number;
     }
     | {
         event_type: 'MouseRelease';
         button: MouseButton;
         x: number;
         y: number;
-        delay_ms: number;
     }
     | {
         event_type: 'MouseMove';
         x: number;
         y: number;
-        delay_ms: number;
     }
     | {
         event_type: 'MouseScroll';
         delta_x: number;
         delta_y: number;
-        delay_ms: number;
     };
 
 // Macro trigger
@@ -103,7 +101,10 @@ export interface HotkeyEvent {
 
 // Helper functions
 export function getEventDelay(event: ScriptEvent): number {
-    return event.delay_ms;
+    if (event.event_type === 'Delay') {
+        return event.duration_ms;
+    }
+    return 0;
 }
 
 export function getKeyDisplay(key: KeyboardKey): string {
@@ -115,6 +116,8 @@ export function getKeyDisplay(key: KeyboardKey): string {
 
 export function getEventDescription(event: ScriptEvent): string {
     switch (event.event_type) {
+        case 'Delay':
+            return `Wait: ${formatDuration(event.duration_ms)}`;
         case 'KeyPress':
             return `Key Down: ${getKeyDisplay(event.key)}`;
         case 'KeyRelease':

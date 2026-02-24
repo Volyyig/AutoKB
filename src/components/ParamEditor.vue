@@ -41,7 +41,10 @@ function updateSpeed() {
 
 function updateSelectedDelay() {
     if (store.selectedEventIndex !== null && editingDelay.value !== null) {
-        store.updateEventDelay(store.selectedEventIndex, editingDelay.value);
+        const event = store.currentScript.events[store.selectedEventIndex];
+        if (event.event_type === 'Delay') {
+            store.updateEventDelay(store.selectedEventIndex, editingDelay.value);
+        }
         editingDelay.value = null;
     }
 }
@@ -60,8 +63,10 @@ function adjustDelay(delta: number) {
 
 // Initialize editing delay when selection changes
 watch(() => store.selectedEventIndex, () => {
-    if (selectedEvent.value) {
-        editingDelay.value = selectedEvent.value.delay_ms;
+    if (selectedEvent.value && selectedEvent.value.event_type === 'Delay') {
+        editingDelay.value = selectedEvent.value.duration_ms;
+    } else {
+        editingDelay.value = null;
     }
 });
 </script>
@@ -154,7 +159,7 @@ watch(() => store.selectedEventIndex, () => {
                     <span class="detail-label">Type:</span>
                     <span class="detail-value">{{ selectedEvent.event_type }}</span>
                 </div>
-                <div class="detail-row">
+                <div class="detail-row" v-if="selectedEvent.event_type === 'Delay'">
                     <span class="detail-label">Delay:</span>
                     <div class="input-group small">
                         <button class="adjust-btn" @click="adjustDelay(-10)" title="-10ms">«</button>

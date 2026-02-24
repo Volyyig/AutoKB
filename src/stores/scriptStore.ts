@@ -33,7 +33,12 @@ export const useScriptStore = defineStore('script', () => {
     // Computed
     const eventCount = computed(() => currentScript.value.events.length);
     const totalDuration = computed(() =>
-        currentScript.value.events.reduce((sum, e) => sum + e.delay_ms, 0)
+        currentScript.value.events.reduce((sum, e) => {
+            if (e.event_type === 'Delay') {
+                return sum + e.duration_ms;
+            }
+            return sum;
+        }, 0)
     );
     const hasEvents = computed(() => eventCount.value > 0);
 

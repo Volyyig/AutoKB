@@ -106,10 +106,12 @@
                                     <div v-for="(event, eIndex) in group.events" :key="eIndex" class="event-item">
                                         <span class="event-desc">{{ getEventDescription(event) }}</span>
                                         <div class="event-controls">
-                                            <span class="label">Delay:</span>
-                                            <input type="number" v-model.number="event.delay_ms" class="delay-input"
-                                                min="0">
-                                            <span class="unit">ms</span>
+                                            <template v-if="event.event_type === 'Delay'">
+                                                <span class="label">Duration:</span>
+                                                <input type="number" v-model.number="event.duration_ms"
+                                                    class="delay-input" min="0">
+                                                <span class="unit">ms</span>
+                                            </template>
                                             <button class="btn-icon small danger"
                                                 @click="deleteEvent(index, eIndex)">✕</button>
                                         </div>

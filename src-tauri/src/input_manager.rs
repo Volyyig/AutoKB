@@ -116,13 +116,11 @@ fn handle_event(event: Event, _manager: &InputManager) {
             EventType::KeyPress(key) => {
                 recorder::get_state().commit_event(ScriptEvent::KeyPress {
                     key: KeyboardKey::from(key),
-                    delay_ms: elapsed,
                 });
             }
             EventType::KeyRelease(key) => {
                 recorder::get_state().commit_event(ScriptEvent::KeyRelease {
                     key: KeyboardKey::from(key),
-                    delay_ms: elapsed,
                 });
             }
             EventType::ButtonPress(button) => {
@@ -131,7 +129,6 @@ fn handle_event(event: Event, _manager: &InputManager) {
                     button: MouseButton::from(button),
                     x,
                     y,
-                    delay_ms: elapsed,
                 });
             }
             EventType::ButtonRelease(button) => {
@@ -140,26 +137,17 @@ fn handle_event(event: Event, _manager: &InputManager) {
                     button: MouseButton::from(button),
                     x,
                     y,
-                    delay_ms: elapsed,
                 });
             }
             EventType::MouseMove { x, y } => {
                 recorder::get_state().update_mouse_position(x, y);
                 // Throttle mouse move recording: ONLY record if time >= 20ms
                 if elapsed >= 20 {
-                    recorder::get_state().commit_event(ScriptEvent::MouseMove {
-                        x,
-                        y,
-                        delay_ms: elapsed,
-                    });
+                    recorder::get_state().commit_event(ScriptEvent::MouseMove { x, y });
                 }
             }
             EventType::Wheel { delta_x, delta_y } => {
-                recorder::get_state().commit_event(ScriptEvent::MouseScroll {
-                    delta_x,
-                    delta_y,
-                    delay_ms: elapsed,
-                });
+                recorder::get_state().commit_event(ScriptEvent::MouseScroll { delta_x, delta_y });
             }
         }
     }

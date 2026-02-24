@@ -142,50 +142,46 @@ fn execute_event(
     speed_multiplier: f64,
     use_recorded_position: bool,
 ) -> Result<(), String> {
-    // Calculate adjusted delay
-    let delay_ms = (event.delay_ms() as f64 / speed_multiplier) as u64;
-
-    // Wait for the delay (interruptible)
-    if delay_ms > 0 {
-        let chunk_ms = 100; // Check stop every 100ms
-        let mut remaining = delay_ms;
-
-        while remaining > 0 {
-            if get_state().should_stop() {
-                return Err("Playback stopped".to_string());
-            }
-
-            let sleep_time = if remaining > chunk_ms {
-                chunk_ms
-            } else {
-                remaining
-            };
-            thread::sleep(Duration::from_millis(sleep_time));
-            remaining -= sleep_time;
-        }
-    }
-
-    // Check if we should stop
-    if get_state().should_stop() {
-        return Err("Playback stopped".to_string());
-    }
-
     match event {
-        ScriptEvent::KeyPress { key, .. } => {
+        ScriptEvent::Delay { duration_ms } => {
+            // Calculate adjusted delay
+            let delay_ms = (*duration_ms as f64 / speed_multiplier) as u64;
+
+            // Wait for the delay (interruptible)
+            if delay_ms > 0 {
+                let chunk_ms = 100; // Check stop every 100ms
+                let mut remaining = delay_ms;
+
+                while remaining > 0 {
+                    if get_state().should_stop() {
+                        return Err("Playback stopped".to_string());
+                    }
+
+                    let sleep_time = if remaining > chunk_ms {
+                        chunk_ms
+                    } else {
+                        remaining
+                    };
+                    thread::sleep(Duration::from_millis(sleep_time));
+                    remaining -= sleep_time;
+                }
+            }
+        }
+        ScriptEvent::KeyPress { key } => {
             if let Some(enigo_key) = keyboard_key_to_enigo(key) {
                 enigo
                     .key(enigo_key, enigo::Direction::Press)
                     .map_err(|e| format!("Key press error: {:?}", e))?;
             }
         }
-        ScriptEvent::KeyRelease { key, .. } => {
+        ScriptEvent::KeyRelease { key } => {
             if let Some(enigo_key) = keyboard_key_to_enigo(key) {
                 enigo
                     .key(enigo_key, enigo::Direction::Release)
                     .map_err(|e| format!("Key release error: {:?}", e))?;
             }
         }
-        ScriptEvent::MousePress { button, x, y, .. } => {
+        ScriptEvent::MousePress { button, x, y } => {
             if use_recorded_position {
                 // Move to position first
                 enigo
@@ -197,7 +193,7 @@ fn execute_event(
                 .button((*button).into(), enigo::Direction::Press)
                 .map_err(|e| format!("Mouse press error: {:?}", e))?;
         }
-        ScriptEvent::MouseRelease { button, x, y, .. } => {
+        ScriptEvent::MouseRelease { button, x, y } => {
             if use_recorded_position {
                 enigo
                     .move_mouse(*x as i32, *y as i32, enigo::Coordinate::Abs)
@@ -207,14 +203,12 @@ fn execute_event(
                 .button((*button).into(), enigo::Direction::Release)
                 .map_err(|e| format!("Mouse release error: {:?}", e))?;
         }
-        ScriptEvent::MouseMove { x, y, .. } => {
+        ScriptEvent::MouseMove { x, y } => {
             enigo
                 .move_mouse(*x as i32, *y as i32, enigo::Coordinate::Abs)
                 .map_err(|e| format!("Mouse move error: {:?}", e))?;
         }
-        ScriptEvent::MouseScroll {
-            delta_x, delta_y, ..
-        } => {
+        ScriptEvent::MouseScroll { delta_x, delta_y } => {
             if *delta_y != 0 {
                 enigo
                     .scroll(-*delta_y as i32, enigo::Axis::Vertical)

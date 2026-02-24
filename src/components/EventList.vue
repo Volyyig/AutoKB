@@ -76,7 +76,6 @@ function selectGroup(group: EventGroup) {
                         @click.stop="store.selectedEventIndex = (group.startIndex + eIndex)">
                         <span class="detail-index">{{ group.startIndex + eIndex + 1 }}</span>
                         <span class="detail-desc">{{ getEventDescription(event) }}</span>
-                        <span class="detail-delay">+{{ event.delay_ms }}ms</span>
                     </div>
                 </div>
             </div>

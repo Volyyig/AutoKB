@@ -74,12 +74,22 @@ impl RecordingState {
             return;
         }
 
+        // Calculate elapsed time since last event
+        let elapsed = self.get_elapsed_ms();
+
         // Update time
         let mut last_time = self.last_event_time.lock();
         *last_time = Some(Instant::now());
 
-        // Add event
-        self.events.lock().push(event);
+        let mut events = self.events.lock();
+        // Insert Delay event if there's significant elapsed time
+        if elapsed > 0 {
+            events.push(ScriptEvent::Delay {
+                duration_ms: elapsed,
+            });
+        }
+        // Add actual action event
+        events.push(event);
     }
 
     // Helper to update position without adding event (not used with new logic but kept for safety)
@@ -131,16 +141,7 @@ pub fn is_recording() -> bool {
 pub fn record_event_direct(event: ScriptEvent) {
     let state = get_state();
     if state.is_recording() {
-        // Recalculate delay based on last event time to ensure consistency
-        // Note: The event passed in might have a delay relative to frontend time,
-        // but we should probably just use the backend timer for consistency
-        // OR rely on the limit that this is ONLY called when focused.
-        // Better: Use the same commit_event logic which manages time.
-        // We override the delay with the backend's elapsed time.
-        let elapsed = state.get_elapsed_ms();
-        let mut event_clone = event;
-        event_clone.set_delay_ms(elapsed);
-        state.commit_event(event_clone);
+        state.commit_event(event);
     }
 }
 
