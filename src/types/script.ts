@@ -48,24 +48,25 @@ export type ScriptEvent =
         delta_y: number;
     };
 
-// Macro trigger
-export type MacroTrigger =
-    | { trigger_type: 'KeyPress'; key: KeyboardKey }
-    | { trigger_type: 'MousePress'; button: MouseButton };
-
-// Macro definition
-export interface MacroDefinition {
+// A task definition - trigger + action
+export interface Task {
     id: string;
     name: string;
-    trigger: MacroTrigger;
+    description: string;
+    trigger_key?: KeyboardKey;
+    stop_key?: KeyboardKey;
     script_path: string;
     enabled: boolean;
+    loop_config: LoopConfig;
+    speed_multiplier: number;
 }
 
 // Saved script info
 export interface SavedScript {
     name: string;
     path: string;
+    description: string;
+    modified_at: string;
 }
 
 // Loop configuration
@@ -89,7 +90,7 @@ export interface Script {
 export interface AppState {
     recording: boolean;
     playing: boolean;
-    macro_active: boolean;
+    task_listener_active: boolean;
 }
 
 // Hotkey event payload

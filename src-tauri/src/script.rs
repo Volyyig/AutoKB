@@ -156,39 +156,27 @@ pub enum ScriptEvent {
     MouseScroll { delta_x: i64, delta_y: i64 },
 }
 
-impl ScriptEvent {
-    /// Get the duration if this is a delay event
-    pub fn get_delay_ms(&self) -> u64 {
-        match self {
-            ScriptEvent::Delay { duration_ms } => *duration_ms,
-            _ => 0,
-        }
-    }
-}
-
-/// Macro trigger condition - what triggers the macro
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(tag = "trigger_type")]
-pub enum MacroTrigger {
-    /// Triggered by pressing a keyboard key
-    KeyPress { key: KeyboardKey },
-    /// Triggered by pressing a mouse button
-    MousePress { button: MouseButton },
-}
-
-/// A macro definition - trigger + action
+/// A task definition - trigger + action
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MacroDefinition {
+pub struct Task {
     /// Unique identifier
     pub id: String,
     /// Display name
     pub name: String,
-    /// What triggers this macro
-    pub trigger: MacroTrigger,
+    /// Description
+    pub description: String,
+    /// What triggers this task
+    pub trigger_key: Option<KeyboardKey>,
+    /// What interrupts this task
+    pub stop_key: Option<KeyboardKey>,
     /// Path to the script file to execute
     pub script_path: String,
-    /// Whether the macro is enabled
+    /// Whether the task is enabled
     pub enabled: bool,
+    /// Loop configuration
+    pub loop_config: LoopConfig,
+    /// Speed multiplier
+    pub speed_multiplier: f64,
 }
 
 /// Loop configuration for script execution
@@ -242,60 +230,15 @@ impl Default for Script {
     }
 }
 
-impl Script {
-    /// Create a new script with the given name
-    pub fn new(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            ..Default::default()
-        }
-    }
-
-    /// Add an event to the script
-    pub fn add_event(&mut self, event: ScriptEvent) {
-        self.events.push(event);
-        self.modified_at = Utc::now();
-    }
-
-    /// Clear all events
-    pub fn clear_events(&mut self) {
-        self.events.clear();
-        self.modified_at = Utc::now();
-    }
-
-    /// Get total duration in milliseconds
-    pub fn total_duration_ms(&self) -> u64 {
-        self.events
-            .iter()
-            .map(|e| match e {
-                ScriptEvent::Delay { duration_ms } => *duration_ms,
-                _ => 0,
-            })
-            .sum()
-    }
-}
-
-/// Application configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppConfig {
-    /// Hotkey for start/stop recording (default: F9)
-    pub recording_hotkey: String,
-    /// Hotkey for start/stop playback (default: F10)
-    pub playback_hotkey: String,
-    /// Emergency stop hotkey (default: Escape)
-    pub stop_hotkey: String,
-    /// Macro definitions
-    pub macros: Vec<MacroDefinition>,
+    pub tasks: Vec<Task>,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
-        Self {
-            recording_hotkey: "F9".to_string(),
-            playback_hotkey: "F10".to_string(),
-            stop_hotkey: "Escape".to_string(),
-            macros: Vec::new(),
-        }
+        Self { tasks: Vec::new() }
     }
 }
 
@@ -305,14 +248,20 @@ mod tests {
 
     #[test]
     fn test_script_creation() {
-        let script = Script::new("Test Script");
+        let script = Script {
+            name: "Test Script".to_string(),
+            ..Default::default()
+        };
         assert_eq!(script.name, "Test Script");
         assert!(script.events.is_empty());
     }
 
     #[test]
     fn test_serialization() {
-        let script = Script::new("Test");
+        let script = Script {
+            name: "Test".to_string(),
+            ..Default::default()
+        };
         let json = serde_json::to_string(&script).unwrap();
         let parsed: Script = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.name, "Test");

@@ -1,338 +1,127 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import ControlBar from './components/ControlBar.vue';
-import EventList from './components/EventList.vue';
-import ParamEditor from './components/ParamEditor.vue';
-import MacroEditor from './components/MacroEditor.vue';
+import TaskDashboard from './components/TaskDashboard.vue';
+import ScriptLibrary from './components/ScriptLibrary.vue';
 import VisualScriptEditor from './components/VisualScriptEditor.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import { useScriptStore } from './stores/scriptStore';
-import { formatDuration } from './types/script';
 
 const store = useScriptStore();
 
-// Global key handler for shortcuts that should work even when window is focused
-async function handleKeydown(e: KeyboardEvent) {
-  await store.handleFrontendEvent(e);
-}
-
 onMounted(async () => {
-  // Show main window after setup is complete (prevents white flash)
   invoke('release_main_window');
   await invoke('release_overlay_window');
-
   await store.init();
-  // window.addEventListener('keydown', handleKeydown);
-  // window.addEventListener('keyup', (e) => store.handleFrontendEvent(e));
 });
 
-onUnmounted(() => {
-  // window.removeEventListener('keydown', handleKeydown);
-  // window.removeEventListener('keyup', (e) => store.handleFrontendEvent(e)); // Ensure consistent removal
-});
+const navItems = [
+  { id: 'tasks', name: '任务', icon: 'account_tree' },
+  { id: 'scripts', name: '脚本', icon: 'edit_note' },
+  { id: 'logs', name: '日志', icon: 'description' },
+  { id: 'settings', name: '设置', icon: 'settings' },
+];
 </script>
 
 <template>
-  <div class="app">
-    <!-- Main View -->
-    <div class="main-view" v-show="store.currentView === 'home'">
-      <header class="header">
-        <div class="logo-area">
-          <span class="logo-icon">🤖</span>
-          <h1 class="title">AutoKB</h1>
+  <div class="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark font-display">
+    <!-- Sidebar Navigation -->
+    <aside
+      class="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
+        <div class="bg-primary p-2 rounded-lg text-white">
+          <span class="material-symbols-outlined block text-2xl">auto_fix_high</span>
         </div>
-        <div class="status-bar">
-          <span class="status-dot" :class="{
-            'recording': store.isRecording,
-            'playing': store.isPlaying
-          }"></span>
-          <span class="status-text">{{ store.statusMessage }}</span>
+        <div>
+          <h1 class="text-lg font-bold leading-none">AutoKB</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">版本 v2.4.0</p>
+        </div>
+      </div>
+
+      <nav class="flex-1 px-4 py-6 flex flex-col gap-2">
+        <button v-for="item in navItems" :key="item.id" @click="store.activeTab = item.id as any" :class="[
+          'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors font-medium text-left',
+          store.activeTab === item.id
+            ? 'bg-primary/10 text-primary'
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+        ]">
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+          <span>{{ item.name }}</span>
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-slate-200 dark:border-slate-800">
+        <button @click="store.currentView = 'visual-editor'"
+          class="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors">
+          <span class="material-symbols-outlined text-xl">add_circle</span>
+          <span>新建脚本</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+      <!-- Header -->
+      <header
+        class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-8">
+        <div class="flex items-center gap-6 flex-1">
+          <h2 class="text-xl font-bold tracking-tight">Desktop Automation</h2>
+          <div class="relative w-full max-w-md">
+            <span
+              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
+            <input
+              class="w-full pl-10 pr-4 py-2 rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+              placeholder="搜索任务..." type="text" />
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div
+            class="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+            <span
+              :class="['w-2 h-2 rounded-full', store.isRecording ? 'bg-red-500 animate-pulse' : store.isPlaying ? 'bg-green-500 animate-pulse' : 'bg-slate-400']"></span>
+            <span class="text-xs font-medium text-slate-600 dark:text-slate-400">{{ store.statusMessage }}</span>
+          </div>
+          <button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative">
+            <span class="material-symbols-outlined">notifications</span>
+            <span
+              class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+          </button>
         </div>
       </header>
 
-      <ControlBar />
-
-      <main class="main-content">
-        <section class="panel event-panel">
-          <div class="panel-header">
-            <h2>当前脚本</h2>
-            <div class="panel-actions">
-              <span class="event-count">{{ store.eventCount }} 个事件</span>
-              <span class="duration" v-if="store.totalDuration > 0">
-                {{ formatDuration(store.totalDuration) }}
-              </span>
-              <button class="btn-icon" @click="store.clearScript" title="清空脚本">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
+      <!-- Dashboard Content -->
+      <div class="flex-1 overflow-y-auto p-8">
+        <Transition name="page" mode="out-in">
+          <div :key="store.activeTab">
+            <TaskDashboard v-if="store.activeTab === 'tasks'" />
+            <div v-else-if="store.activeTab === 'scripts'">
+              <ScriptLibrary />
+            </div>
+            <div v-else-if="store.activeTab === 'logs'" class="p-4 text-center text-slate-500">
+              运行日志（正在开发中...）
+            </div>
+            <div v-else-if="store.activeTab === 'settings'" class="p-4 text-center text-slate-500">
+              设置页面（正在开发中...）
             </div>
           </div>
-          <div class="panel-body">
-            <EventList />
-          </div>
-        </section>
-
-        <aside class="panel settings-panel">
-          <div class="panel-header">
-            <h2>设置</h2>
-          </div>
-          <ParamEditor />
-        </aside>
-      </main>
-
-      <footer class="footer">
-        <div class="shortcuts">
-          <span class="shortcut"><strong>F9</strong> 开始/停止录制</span>
-          <span class="shortcut"><strong>F10</strong> 开始/停止回放</span>
-        </div>
-      </footer>
-    </div>
-
-    <!-- Macro Editor Overlay -->
-    <Transition name="slide-up">
-      <MacroEditor v-if="store.currentView === 'macro-editor'" />
-    </Transition>
+        </Transition>
+      </div>
+    </main>
 
     <!-- Visual Script Editor Overlay -->
     <Transition name="slide-up">
-      <VisualScriptEditor v-if="store.currentView === 'visual-editor'" />
+      <VisualScriptEditor v-if="store.currentView === 'visual-editor'" @close="store.currentView = 'home'" />
     </Transition>
 
-    <!-- Global Toast Notifications -->
     <ToastNotification />
   </div>
 </template>
 
 <style>
-/* Global Styles */
-:root {
-  --color-bg-primary: #1e1e2e;
-  --color-bg-secondary: #252538;
-  --color-bg-tertiary: #2a2a3c;
-  --color-text-primary: #e0e0e0;
-  --color-text-secondary: #a0a0a0;
-  --color-text-disabled: #5a5a5a;
-  --color-accent: #6366f1;
-  --color-accent-hover: #4f46e5;
-  --color-accent-dim: rgba(99, 102, 241, 0.2);
-  --color-border: #333344;
-  --color-danger: #ef4444;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-hover: rgba(255, 255, 255, 0.05);
-
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  overflow: hidden;
-  user-select: none;
-}
-
-/* App Layout */
-.app {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.main-view {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-/* Header */
-.header {
-  height: 50px;
-  padding: 0 20px;
-  background-color: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.logo-area {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.logo-icon {
-  font-size: 24px;
-}
-
-.title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
-  background: linear-gradient(to right, #6366f1, #a855f7);
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.status-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background-color: var(--color-bg-primary);
-  padding: 4px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--color-text-disabled);
-  transition: background-color 0.3s;
-}
-
-.status-dot.recording {
-  background-color: var(--color-danger);
-  box-shadow: 0 0 8px var(--color-danger);
-}
-
-.status-dot.playing {
-  background-color: var(--color-success);
-  box-shadow: 0 0 8px var(--color-success);
-}
-
-.status-text {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-/* Main Content */
-.main-content {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  /* Event List + Settings Panel */
-  gap: 0;
-  overflow: hidden;
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-bg-primary);
-}
-
-.event-panel {
-  border-right: 1px solid var(--color-border);
-}
-
-.settings-panel {
-  background-color: var(--color-bg-secondary);
-}
-
-.panel-header {
-  height: 48px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: var(--color-bg-tertiary);
-}
-
-.panel-header h2 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.panel-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.event-count,
-.duration {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  font-family: monospace;
-  background: var(--color-bg-primary);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.panel-body {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-icon:hover {
-  background-color: var(--color-hover);
-  color: var(--color-text-primary);
-}
-
-/* Footer */
-.footer {
-  height: 32px;
-  background-color: var(--color-bg-tertiary);
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 20px;
-}
-
-.shortcuts {
-  display: flex;
-  gap: 24px;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.shortcut strong {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-primary);
-  padding: 1px 5px;
-  border-radius: 3px;
-  border: 1px solid var(--color-border);
-  font-family: monospace;
-  margin-right: 4px;
-}
-
-/* Transitions */
+/* Transitions are defined in index.css */
 .slide-up-enter-active,
 .slide-up-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
 }
 
 .slide-up-enter-from,

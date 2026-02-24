@@ -1,12 +1,9 @@
-/**
- * Pinia store for script state management
- */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { save, open } from '@tauri-apps/plugin-dialog';
-import type { Script, ScriptEvent, MacroDefinition, AppState, HotkeyEvent, SavedScript } from '../types/script';
+import type { Script, ScriptEvent, Task, AppState, HotkeyEvent, SavedScript } from '../types/script';
 import { createEmptyScript } from '../types/script';
 
 export interface Notification {
@@ -21,12 +18,13 @@ export const useScriptStore = defineStore('script', () => {
     const currentScript = ref<Script>(createEmptyScript());
     const isRecording = ref(false);
     const isPlaying = ref(false);
-    const isMacroActive = ref(false);
-    const macros = ref<MacroDefinition[]>([]);
+    const isTaskListenerActive = ref(false);
+    const tasks = ref<Task[]>([]);
     const savedScripts = ref<SavedScript[]>([]);
     const selectedEventIndex = ref<number | null>(null);
     const statusMessage = ref('就绪');
     const currentView = ref<'home' | 'macro-editor' | 'visual-editor'>('home');
+    const activeTab = ref<'tasks' | 'scripts' | 'logs' | 'settings'>('tasks');
     const notifications = ref<Notification[]>([]);
     let nextNotificationId = 0;
 
@@ -44,9 +42,6 @@ export const useScriptStore = defineStore('script', () => {
 
     // Actions
 
-    /**
-     * Show a notification toast
-     */
     function showNotification(message: string, type: 'success' | 'error' | 'info' = 'info', duration = 3000) {
         const id = nextNotificationId++;
         const notification: Notification = { id, message, type, duration };
@@ -59,9 +54,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Remove a notification by ID
-     */
     function removeNotification(id: number) {
         const index = notifications.value.findIndex(n => n.id === id);
         if (index !== -1) {
@@ -69,23 +61,17 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Start recording events
-     */
     async function startRecording() {
         try {
             await invoke('start_recording');
             isRecording.value = true;
             currentScript.value.events = [];
-            statusMessage.value = '正在录制... 按 F9 停止';
+            statusMessage.value = '正在录制...';
         } catch (error) {
             statusMessage.value = `录制失败: ${error}`;
         }
     }
 
-    /**
-     * Stop recording and get recorded events
-     */
     async function stopRecording() {
         try {
             const events = await invoke<ScriptEvent[]>('stop_recording');
@@ -99,9 +85,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Toggle recording state
-     */
     async function toggleRecording() {
         if (isRecording.value) {
             await stopRecording();
@@ -110,9 +93,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Start playback
-     */
     async function startPlayback() {
         if (!hasEvents.value) {
             statusMessage.value = '没有可播放的事件';
@@ -122,15 +102,12 @@ export const useScriptStore = defineStore('script', () => {
         try {
             await invoke('play_script', { script: currentScript.value });
             isPlaying.value = true;
-            statusMessage.value = '正在播放... 按 F10 停止';
+            statusMessage.value = '正在播放...';
         } catch (error) {
             statusMessage.value = `播放失败: ${error}`;
         }
     }
 
-    /**
-     * Stop playback
-     */
     async function stopPlayback() {
         try {
             await invoke('stop_playback');
@@ -141,9 +118,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Toggle playback state
-     */
     async function togglePlayback() {
         if (isPlaying.value) {
             await stopPlayback();
@@ -152,9 +126,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Save script to file
-     */
     async function saveScript() {
         try {
             const defaultDir = await invoke<string>('get_scripts_dir');
@@ -166,16 +137,13 @@ export const useScriptStore = defineStore('script', () => {
             if (path) {
                 await invoke('save_script', { script: currentScript.value, path });
                 statusMessage.value = `已保存至 ${path}`;
-                await listSavedScripts(); // Refresh saved scripts list
+                await listSavedScripts();
             }
         } catch (error) {
             statusMessage.value = `保存失败: ${error}`;
         }
     }
 
-    /**
-     * Load script from file
-     */
     async function loadScript() {
         try {
             const defaultDir = await invoke<string>('get_scripts_dir');
@@ -186,31 +154,35 @@ export const useScriptStore = defineStore('script', () => {
             });
 
             if (path) {
-                const script = await invoke<Script>('load_script', { path });
-                currentScript.value = script;
-                statusMessage.value = `已加载 ${script.name}`;
+                await loadScriptByPath(path as string);
             }
         } catch (error) {
             statusMessage.value = `加载失败: ${error}`;
         }
     }
 
-    /**
-     * Update event delay at index
-     */
+    async function loadScriptByPath(path: string) {
+        try {
+            const script = await invoke<Script>('load_script', { path });
+            currentScript.value = script;
+            statusMessage.value = `已加载 ${script.name}`;
+            return script;
+        } catch (error) {
+            statusMessage.value = `加载失败: ${error}`;
+            throw error;
+        }
+    }
+
     async function updateEventDelay(index: number, delayMs: number) {
         const events = await invoke<ScriptEvent[]>('update_event_delay', {
             events: currentScript.value.events,
             index,
-            delayMs,
+            delay_ms: delayMs,
         });
         currentScript.value.events = events;
         currentScript.value.modified_at = new Date().toISOString();
     }
 
-    /**
-     * Delete event at index
-     */
     async function deleteEvent(index: number) {
         const events = await invoke<ScriptEvent[]>('delete_event', {
             events: currentScript.value.events,
@@ -223,9 +195,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Scale all delays
-     */
     async function scaleDelays(factor: number) {
         const events = await invoke<ScriptEvent[]>('scale_delays', {
             events: currentScript.value.events,
@@ -235,37 +204,25 @@ export const useScriptStore = defineStore('script', () => {
         currentScript.value.modified_at = new Date().toISOString();
     }
 
-    /**
-     * Update loop config
-     */
     function updateLoopConfig(count: number, delayBetweenMs: number) {
         currentScript.value.loop_config.count = count;
         currentScript.value.loop_config.delay_between_ms = delayBetweenMs;
         currentScript.value.modified_at = new Date().toISOString();
     }
 
-    /**
-     * Update speed multiplier
-     */
     function updateSpeed(multiplier: number) {
         currentScript.value.speed_multiplier = multiplier;
         currentScript.value.modified_at = new Date().toISOString();
     }
 
-    /**
-     * Load macros from backend
-     */
-    async function loadMacros() {
+    async function loadTasks() {
         try {
-            macros.value = await invoke<MacroDefinition[]>('get_all_macros');
+            tasks.value = await invoke<Task[]>('get_all_tasks');
         } catch (error) {
-            console.error('Failed to load macros:', error);
+            console.error('Failed to load tasks:', error);
         }
     }
 
-    /**
-     * List saved scripts
-     */
     async function listSavedScripts() {
         try {
             savedScripts.value = await invoke<SavedScript[]>('list_saved_scripts');
@@ -274,174 +231,116 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Toggle macro listener
-     */
-    async function toggleMacroListener() {
+    async function toggleTaskListener() {
         try {
-            if (isMacroActive.value) {
-                await invoke('stop_macro_listener');
-                isMacroActive.value = false;
-                statusMessage.value = '宏监听已停止';
+            if (isTaskListenerActive.value) {
+                await invoke('stop_task_listener');
+                isTaskListenerActive.value = false;
+                statusMessage.value = '任务监听已停止';
             } else {
-                await invoke('start_macro_listener');
-                isMacroActive.value = true;
-                statusMessage.value = '宏监听已激活';
+                await invoke('start_task_listener');
+                isTaskListenerActive.value = true;
+                statusMessage.value = '任务监听已激活';
             }
         } catch (error) {
-            statusMessage.value = `宏切换失败: ${error}`;
+            statusMessage.value = `任务监听切换失败: ${error}`;
         }
     }
 
-    /**
-     * Create macro binding
-     */
-    async function createMacroBinding(
-        name: String,
-        triggerType: String,
-        triggerValue: String,
-        scriptPath: String
+    async function createTaskBinding(
+        name: string,
+        triggerKey?: string,
+        stopKey?: string,
+        scriptPath?: string
     ) {
         try {
-            const macro = await invoke<MacroDefinition>('create_macro_binding', {
+            const task = await invoke<Task>('create_task_binding', {
                 name,
-                triggerType,
-                triggerValue,
+                triggerKey,
+                stopKey,
                 scriptPath,
             });
-            macros.value.push(macro);
-            statusMessage.value = `宏 "${name}" 已创建`;
+            tasks.value.push(task);
+            statusMessage.value = `任务 "${name}" 已创建`;
         } catch (error) {
-            statusMessage.value = `创建宏失败: ${error}`;
+            statusMessage.value = `创建任务失败: ${error}`;
         }
     }
 
-    /**
-     * Remove macro
-     */
-    async function removeMacro(id: string) {
+    async function removeTask(id: string) {
         try {
-            await invoke('remove_macro', { id });
-            macros.value = macros.value.filter(m => m.id !== id);
-            statusMessage.value = '宏已删除';
+            await invoke('remove_task', { id });
+            tasks.value = tasks.value.filter(t => t.id !== id);
+            statusMessage.value = '任务已删除';
         } catch (error) {
-            statusMessage.value = `删除宏失败: ${error}`;
+            statusMessage.value = `删除任务失败: ${error}`;
         }
     }
 
-    /**
-     * Toggle macro enabled state
-     */
-    async function toggleMacroEnabled(id: string, enabled: boolean) {
+    async function toggleTaskEnabled(id: string, enabled: boolean) {
         try {
-            await invoke('toggle_macro', { id, enabled });
-            const macro = macros.value.find(m => m.id === id);
-            if (macro) {
-                macro.enabled = enabled;
+            await invoke('toggle_task', { id, enabled });
+            const task = tasks.value.find(t => t.id === id);
+            if (task) {
+                task.enabled = enabled;
             }
         } catch (error) {
-            console.error('Failed to toggle macro:', error);
+            console.error('Failed to toggle task:', error);
         }
     }
 
-    /**
-     * Clear current script
-     */
     function clearScript() {
         currentScript.value = createEmptyScript();
         selectedEventIndex.value = null;
         statusMessage.value = '脚本已清空';
     }
 
-    /**
-     * Create a new draft script
-     */
     function createNewDraftScript(): Script {
         const script = createEmptyScript();
         script.name = `新建脚本_${new Date().toLocaleTimeString().replace(/:/g, '-')}`;
         return script;
     }
 
-    /**
-     * Sync state with backend
-     */
     async function syncState() {
         try {
             const state = await invoke<AppState>('get_app_state');
             isRecording.value = state.recording;
             isPlaying.value = state.playing;
-            isMacroActive.value = state.macro_active;
+            // Note: backend field name changed in get_app_state 
+            isTaskListenerActive.value = (state as any).task_listener_active;
         } catch (error) {
             console.error('Failed to sync state:', error);
         }
     }
 
-    /**
-     * Initialize store - setup hotkey listener
-     */
     async function init() {
-        // Listen for hotkey events from backend
         await listen<HotkeyEvent>('hotkey-event', (event) => {
             const payload = event.payload;
             isRecording.value = payload.recording;
             isPlaying.value = payload.playing;
 
             switch (payload.action) {
-                case 'recording-started':
-                    currentScript.value.events = [];
-                    statusMessage.value = '正在录制... 按 F9 停止';
-                    break;
-                case 'recording-stopped':
-                    // Fetch recorded events
-                    invoke<ScriptEvent[]>('get_recorded_events').then(events => {
-                        currentScript.value.events = events;
-                        statusMessage.value = `录制完成 (${events.length} 个事件)`;
-                    });
-                    break;
-                case 'playback-requested':
-                    // Start playback with current script
-                    if (hasEvents.value && !isPlaying.value) {
-                        startPlayback();
-                    }
+                case 'emergency-stop':
+                    statusMessage.value = '紧急停止';
                     break;
                 case 'playback-stopped':
                     statusMessage.value = '播放已停止';
                     break;
-                case 'emergency-stop':
-                    statusMessage.value = '紧急停止';
-                    break;
             }
         });
 
-        // Sync initial state
         await syncState();
-        await loadMacros();
+        await loadTasks();
         await listSavedScripts();
     }
 
-    /**
-     * Handle frontend keyboard events (when window is focused)
-     */
     async function handleFrontendEvent(e: KeyboardEvent) {
-        // Handle shortcuts first
-        if (e.key === 'F9' && e.type === 'keydown') {
-            await toggleRecording();
-            return;
-        }
-        if (e.key === 'F10' && e.type === 'keydown') {
-            await togglePlayback();
-            return;
-        }
-
-        // Only handle recording events if recording
         if (!isRecording.value) return;
 
-        // Map key to Backend format
         let keyPayload;
         if (e.key.length === 1) {
-            keyPayload = { Char: e.key };
+            keyPayload = { type: 'Char', value: e.key };
         } else {
-            // Map common keys to match Rust rdev names
             let keyName = e.key;
             const keyMap: Record<string, string> = {
                 ' ': 'Space',
@@ -458,15 +357,14 @@ export const useScriptStore = defineStore('script', () => {
             if (keyMap[keyName]) {
                 keyName = keyMap[keyName];
             }
-            keyPayload = { Special: keyName };
+            keyPayload = { type: 'Special', value: keyName };
         }
 
         try {
             await invoke('record_frontend_event', {
                 event: {
                     event_type: e.type === 'keydown' ? 'KeyPress' : 'KeyRelease',
-                    key: keyPayload,
-                    delay_ms: 0 // Backend will override
+                    key: keyPayload
                 }
             });
         } catch (error) {
@@ -479,12 +377,13 @@ export const useScriptStore = defineStore('script', () => {
         currentScript,
         isRecording,
         isPlaying,
-        isMacroActive,
-        macros,
+        isTaskListenerActive,
+        tasks,
         savedScripts,
         selectedEventIndex,
         statusMessage,
         currentView,
+        activeTab,
         // Computed
         eventCount,
         totalDuration,
@@ -498,23 +397,23 @@ export const useScriptStore = defineStore('script', () => {
         togglePlayback,
         saveScript,
         loadScript,
+        loadScriptByPath,
         updateEventDelay,
         deleteEvent,
         scaleDelays,
         updateLoopConfig,
         updateSpeed,
-        loadMacros,
+        loadTasks,
         listSavedScripts,
-        toggleMacroListener,
-        createMacroBinding,
-        removeMacro,
-        toggleMacroEnabled,
+        toggleTaskListener,
+        createTaskBinding,
+        removeTask,
+        toggleTaskEnabled,
         clearScript,
         syncState,
         init,
         handleFrontendEvent,
         createNewDraftScript,
-        // Notifications
         notifications,
         showNotification,
         removeNotification

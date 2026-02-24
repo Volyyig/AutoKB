@@ -51,12 +51,6 @@ impl RecordingState {
         self.is_recording.store(false, Ordering::SeqCst);
     }
 
-    pub fn add_event(&self, event: ScriptEvent) {
-        if self.is_recording() {
-            self.events.lock().push(event);
-        }
-    }
-
     pub fn get_events(&self) -> Vec<ScriptEvent> {
         self.events.lock().clone()
     }
@@ -135,14 +129,6 @@ pub fn stop_recording() -> Vec<ScriptEvent> {
 /// Check if currently recording
 pub fn is_recording() -> bool {
     get_state().is_recording()
-}
-
-/// Record an event directly (e.g. from frontend)
-pub fn record_event_direct(event: ScriptEvent) {
-    let state = get_state();
-    if state.is_recording() {
-        state.commit_event(event);
-    }
 }
 
 /// Get currently recorded events (for real-time display)

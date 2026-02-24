@@ -95,73 +95,40 @@ pub fn on_playback_finish() {
 }
 
 fn handle_event(event: Event, _manager: &InputManager) {
-    // 1. Handle Hotkeys
+    // 1. Handle Global Hotkeys (Emergency Stop)
     let hotkey_state = crate::hotkey::get_state();
     if let EventType::KeyPress(key) = event.event_type {
-        if key == hotkey_state.get_recording_key() {
-            // Toggle recording
-            let app_handle = _manager.app_handle.lock().clone();
-            if let Some(app) = app_handle {
-                thread::spawn(move || {
-                    if recorder::is_recording() {
-                        let _ = crate::stop_recording(app.clone());
-                        emit_event(
-                            "hotkey-event",
-                            crate::hotkey::HotkeyEvent {
-                                action: "recording-stopped".to_string(),
-                                recording: false,
-                                playing: player::is_playing(),
-                            },
-                        );
-                    } else if !player::is_playing() {
-                        let _ = crate::start_recording(app.clone());
-                        emit_event(
-                            "hotkey-event",
-                            crate::hotkey::HotkeyEvent {
-                                action: "recording-started".to_string(),
-                                recording: true,
-                                playing: false,
-                            },
-                        );
-                    }
+        if key == hotkey_state.get_stop_key() {
+            if player::is_playing() {
+                player::stop_playback();
+                let _ = _manager.app_handle.lock().as_ref().map(|app| {
+                    let _ = app.get_webview_window("main").map(|w| {
+                        let _ = w.show();
+                        let _ = w.set_focus();
+                    });
                 });
-            }
-            return;
-        }
 
-        if key == hotkey_state.get_playback_key() {
-            // Toggle playback
-            let app_handle = _manager.app_handle.lock().clone();
-            if let Some(app) = app_handle {
-                thread::spawn(move || {
-                    if player::is_playing() {
-                        crate::stop_playback(app.clone());
-                        emit_event(
-                            "hotkey-event",
-                            crate::hotkey::HotkeyEvent {
-                                action: "playback-stopped".to_string(),
-                                recording: recorder::is_recording(),
-                                playing: false,
-                            },
-                        );
-                    } else {
-                        emit_event(
-                            "hotkey-event",
-                            crate::hotkey::HotkeyEvent {
-                                action: "playback-requested".to_string(),
-                                recording: recorder::is_recording(),
-                                playing: false,
-                            },
-                        );
-                    }
-                });
+                emit_event(
+                    "hotkey-event",
+                    crate::hotkey::HotkeyEvent {
+                        action: "emergency-stop".to_string(),
+                        recording: recorder::is_recording(),
+                        playing: false,
+                    },
+                );
+                return;
             }
-            return;
         }
     }
 
-    // 2. Playback Protection
+    // 2. Playback Protection (Skip normal event processing if playing)
     if player::is_playing() {
+        // Still check for task-specific stop keys via TaskState
+        if let EventType::KeyPress(key) = event.event_type {
+            if macro_trigger::get_state().check_key_event(&KeyboardKey::from(key)) {
+                return;
+            }
+        }
         return;
     }
 
@@ -208,22 +175,10 @@ fn handle_event(event: Event, _manager: &InputManager) {
         }
     }
 
-    // 4. Handle Macros
+    // 4. Handle Tasks (Triggers)
     if macro_trigger::get_state().is_active() && !recorder::is_recording() {
-        match event.event_type {
-            EventType::KeyPress(key) => {
-                let trigger = crate::script::MacroTrigger::KeyPress {
-                    key: KeyboardKey::from(key),
-                };
-                macro_trigger::get_state().check_and_execute(&trigger);
-            }
-            EventType::ButtonPress(button) => {
-                let trigger = crate::script::MacroTrigger::MousePress {
-                    button: MouseButton::from(button),
-                };
-                macro_trigger::get_state().check_and_execute(&trigger);
-            }
-            _ => {}
+        if let EventType::KeyPress(key) = event.event_type {
+            macro_trigger::get_state().check_key_event(&KeyboardKey::from(key));
         }
     }
 }

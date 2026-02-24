@@ -8,13 +8,17 @@ mod player;
 mod recorder;
 mod script;
 
-use script::{KeyboardKey, MacroDefinition, MacroTrigger, MouseButton, Script, ScriptEvent};
+use script::{KeyboardKey, LoopConfig, Script, ScriptEvent, Task};
 use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 
-// Show main window after setup is complete (prevents white flash)
+// ============================================================================
+// Window Commands
+// ============================================================================
+
+/// Show main window after setup is complete (prevents white flash)
 #[tauri::command]
 fn release_main_window(app: tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
@@ -36,29 +40,21 @@ fn release_overlay_window(app: tauri::AppHandle) {
 /// Start recording keyboard/mouse events
 #[tauri::command]
 fn start_recording(app: tauri::AppHandle) -> Result<(), String> {
-    // Hide main window
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.hide();
     }
-
-    // Show overlay (Red)
     input_manager::show_overlay(&app, "#f85149");
-
     recorder::start_recording()
 }
 
 /// Stop recording and return recorded events
 #[tauri::command]
 fn stop_recording(app: tauri::AppHandle) -> Vec<ScriptEvent> {
-    // Hide overlay
     input_manager::hide_overlay(&app);
-
-    // Show main window
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();
     }
-
     recorder::stop_recording()
 }
 
@@ -77,7 +73,7 @@ fn get_recorded_events() -> Vec<ScriptEvent> {
 /// Record an event from the frontend (for when window is focused)
 #[tauri::command]
 fn record_frontend_event(event: ScriptEvent) {
-    recorder::record_event_direct(event);
+    recorder::get_state().commit_event(event);
 }
 
 // ============================================================================
@@ -87,14 +83,10 @@ fn record_frontend_event(event: ScriptEvent) {
 /// Play a script
 #[tauri::command]
 fn play_script(app: tauri::AppHandle, script: Script) -> Result<(), String> {
-    // Hide main window
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.hide();
     }
-
-    // Show overlay (Blue)
     input_manager::show_overlay(&app, "#58a6ff");
-
     player::play_script(script)
 }
 
@@ -105,29 +97,21 @@ fn play_events(
     events: Vec<ScriptEvent>,
     speed_multiplier: f64,
 ) -> Result<(), String> {
-    // Hide main window
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.hide();
     }
-
-    // Show overlay (Blue)
     input_manager::show_overlay(&app, "#58a6ff");
-
     player::play_events(events, speed_multiplier)
 }
 
 /// Stop playback
 #[tauri::command]
 fn stop_playback(app: tauri::AppHandle) {
-    // Hide overlay
     input_manager::hide_overlay(&app);
-
-    // Show main window
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();
     }
-
     player::stop_playback()
 }
 
@@ -175,7 +159,6 @@ fn get_scripts_dir(app: tauri::AppHandle) -> Result<String, String> {
         .map_err(|e| format!("Failed to get app local data dir: {}", e))?
         .join("scripts");
 
-    // Create directory if it doesn't exist
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|e| format!("Failed to create directory: {}", e))?;
     }
@@ -185,87 +168,12 @@ fn get_scripts_dir(app: tauri::AppHandle) -> Result<String, String> {
         .ok_or_else(|| "Invalid path".to_string())
 }
 
-// ============================================================================
-// Macro Commands
-// ============================================================================
-
-/// Add a new macro
-#[tauri::command]
-fn add_macro(macro_def: MacroDefinition) {
-    macro_trigger::add_macro(macro_def);
-}
-
-/// Remove a macro by ID
-#[tauri::command]
-fn remove_macro(id: String) {
-    macro_trigger::remove_macro(&id);
-}
-
-/// Get all macros
-#[tauri::command]
-fn get_all_macros() -> Vec<MacroDefinition> {
-    macro_trigger::get_all_macros()
-}
-
-/// Toggle macro enabled state
-#[tauri::command]
-fn toggle_macro(id: String, enabled: bool) {
-    macro_trigger::toggle_macro(&id, enabled);
-}
-
-/// Start macro listener
-#[tauri::command]
-fn start_macro_listener() -> Result<(), String> {
-    macro_trigger::start_macro_listener()
-}
-
-/// Stop macro listener
-#[tauri::command]
-fn stop_macro_listener() {
-    macro_trigger::stop_macro_listener();
-}
-
-/// Create a macro binding
-#[tauri::command]
-fn create_macro_binding(
-    name: String,
-    trigger_type: String,
-    trigger_value: String,
-    script_path: String,
-) -> Result<MacroDefinition, String> {
-    // Parse trigger
-    let trigger = match trigger_type.as_str() {
-        "mouse" => {
-            let button = match trigger_value.as_str() {
-                "left" => MouseButton::Left,
-                "right" => MouseButton::Right,
-                "middle" => MouseButton::Middle,
-                "back" => MouseButton::Back,
-                "forward" => MouseButton::Forward,
-                _ => return Err("Invalid mouse button".to_string()),
-            };
-            MacroTrigger::MousePress { button }
-        }
-        "key" => {
-            let key = if trigger_value.len() == 1 {
-                KeyboardKey::Char(trigger_value.chars().next().unwrap())
-            } else {
-                KeyboardKey::Special(trigger_value)
-            };
-            MacroTrigger::KeyPress { key }
-        }
-        _ => return Err("Invalid trigger type".to_string()),
-    };
-
-    let macro_def = macro_trigger::create_macro_binding(name, trigger, script_path);
-    macro_trigger::add_macro(macro_def.clone());
-    Ok(macro_def)
-}
-
 #[derive(serde::Serialize)]
 struct SavedScript {
     name: String,
     path: String,
+    description: String,
+    modified_at: String,
 }
 
 /// List saved scripts
@@ -279,16 +187,94 @@ fn list_saved_scripts(app: tauri::AppHandle) -> Result<Vec<SavedScript>, String>
         if let Ok(entry) = entry {
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("autokb") {
-                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                    scripts.push(SavedScript {
-                        name: name.to_string(),
-                        path: path.to_string_lossy().to_string(),
-                    });
+                if let Ok(content) = fs::read_to_string(&path) {
+                    if let Ok(script) = serde_json::from_str::<Script>(&content) {
+                        scripts.push(SavedScript {
+                            name: script.name,
+                            path: path.to_string_lossy().to_string(),
+                            description: script.description,
+                            modified_at: script.modified_at.to_rfc3339(),
+                        });
+                    }
                 }
             }
         }
     }
+    // Sort by modified_at desc
+    scripts.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
     Ok(scripts)
+}
+
+// ============================================================================
+// Task Commands
+// ============================================================================
+
+/// Add a new task
+#[tauri::command]
+fn add_task(task: Task) {
+    macro_trigger::add_task(task);
+}
+
+/// Remove a task by ID
+#[tauri::command]
+fn remove_task(id: String) {
+    macro_trigger::remove_task(&id);
+}
+
+/// Get all tasks
+#[tauri::command]
+fn get_all_tasks() -> Vec<Task> {
+    macro_trigger::get_all_tasks()
+}
+
+/// Toggle task enabled state
+#[tauri::command]
+fn toggle_task(id: String, enabled: bool) {
+    macro_trigger::toggle_task(&id, enabled);
+}
+
+/// Start task listener
+#[tauri::command]
+fn start_task_listener() -> Result<(), String> {
+    macro_trigger::start_task_listener()
+}
+
+/// Stop task listener
+#[tauri::command]
+fn stop_task_listener() {
+    macro_trigger::stop_task_listener();
+}
+
+/// Create a task binding
+#[tauri::command]
+fn create_task_binding(
+    name: String,
+    trigger_key: Option<String>,
+    stop_key: Option<String>,
+    script_path: String,
+) -> Result<Task, String> {
+    let parse_key = |k: String| {
+        if k.len() == 1 {
+            KeyboardKey::Char(k.chars().next().unwrap())
+        } else {
+            KeyboardKey::Special(k)
+        }
+    };
+
+    let task = Task {
+        id: macro_trigger::uuid_simple(),
+        name,
+        description: String::new(),
+        trigger_key: trigger_key.map(parse_key),
+        stop_key: stop_key.map(parse_key),
+        script_path,
+        enabled: true,
+        loop_config: LoopConfig::default(),
+        speed_multiplier: 1.0,
+    };
+
+    macro_trigger::add_task(task.clone());
+    Ok(task)
 }
 
 // ============================================================================
@@ -305,10 +291,6 @@ fn update_event_delay(
     if let Some(event) = events.get_mut(index) {
         if let ScriptEvent::Delay { duration_ms } = event {
             *duration_ms = delay_ms;
-        } else {
-            // If it's not a delay event, maybe we should insert one?
-            // For now, let's just ignore or let the frontend handle the logic of where to send it.
-            // Actually, if we want to change "delay" of an action, we should check if previous event is Delay.
         }
     }
     events
@@ -342,7 +324,7 @@ fn scale_delays(mut events: Vec<ScriptEvent>, factor: f64) -> Vec<ScriptEvent> {
 struct AppState {
     recording: bool,
     playing: bool,
-    macro_active: bool,
+    task_listener_active: bool,
 }
 
 #[tauri::command]
@@ -350,7 +332,7 @@ fn get_app_state() -> AppState {
     AppState {
         recording: recorder::is_recording(),
         playing: player::is_playing(),
-        macro_active: macro_trigger::get_state().is_active(),
+        task_listener_active: macro_trigger::get_state().is_active(),
     }
 }
 
@@ -365,55 +347,36 @@ use tauri::{
         TrayIconEvent,
     },
 };
-// ... (existing code)
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init()) // Add shell plugin
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            #[cfg(desktop)]
-            {
-                // No global shortcuts registered
-            }
-
-            // Initialize unified input manager (handles hotkeys, recording, macros)
             input_manager::init(app.handle().clone());
 
-            // create overlay window
             let _ = WebviewWindowBuilder::new(
                 app,
                 "overlay",
                 WebviewUrl::App(PathBuf::from("overlay.html")),
             )
-            // .inner_size(width, height)
-            // .position(-100., -100.)
-            .focusable(false) // 若遮罩层获取焦点，会阻碍后端监听事件
+            .focusable(false)
             .decorations(false)
             .transparent(true)
-            .resizable(false)
-            .maximizable(true)
             .always_on_top(true)
             .visible(false)
             .fullscreen(true)
             .skip_taskbar(true)
             .build();
-            // if let Some(window) = app.get_webview_window("overlay") {
-            //     let _ = window.set_decorations(false);
-            //     let _ = window.set_always_on_top(true);
-            //     let _ = window.maximize();
-            //     let _ = window.set_ignore_cursor_events(true);
-            // }
 
-            // System Tray Setup
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
             let menu = Menu::with_items(app, &[&quit_i]).unwrap();
 
             let _tray = TrayIconBuilder::with_id("tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
-                .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => {
                         app.exit(0);
@@ -444,7 +407,6 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // If it's the main window, hide it instead of closing
                 if window.label() == "main" {
                     let _ = window.hide();
                     api.prevent_close();
@@ -452,39 +414,32 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            // Window
             release_main_window,
             release_overlay_window,
-            // Recording
             start_recording,
             stop_recording,
             is_recording,
             get_recorded_events,
             record_frontend_event,
-            // Playback
             play_script,
             play_events,
             stop_playback,
             is_playing,
-            // Script files
             save_script,
             load_script,
             get_scripts_dir,
-            // Macros
-            add_macro,
-            remove_macro,
-            get_all_macros,
-            toggle_macro,
-            start_macro_listener,
-            stop_macro_listener,
-            create_macro_binding,
+            delete_script,
+            add_task,
+            remove_task,
+            get_all_tasks,
+            toggle_task,
+            start_task_listener,
+            stop_task_listener,
+            create_task_binding,
             list_saved_scripts,
-            // Script editing
             update_event_delay,
             delete_event,
             scale_delays,
-            delete_script,
-            // App state
             get_app_state,
         ])
         .run(tauri::generate_context!())
