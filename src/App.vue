@@ -6,6 +6,7 @@ import ScriptLibrary from './components/ScriptLibrary.vue';
 import SettingsView from './components/SettingsView.vue';
 import VisualScriptEditor from './components/VisualScriptEditor.vue';
 import ToastNotification from './components/ToastNotification.vue';
+import ConfirmDialog from './components/ConfirmDialog.vue';
 import { useScriptStore } from './stores/scriptStore';
 
 const store = useScriptStore();
@@ -112,6 +113,7 @@ const navItems = [
     </Transition>
 
     <ToastNotification />
+    <ConfirmDialog />
   </div>
 </template>
 

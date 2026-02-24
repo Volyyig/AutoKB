@@ -70,8 +70,10 @@
 <script setup lang="ts">
 import { useScriptStore } from '../stores/scriptStore';
 import { invoke } from '@tauri-apps/api/core';
+import { useConfirmDialog } from '../composables/useConfirmDialog';
 
 const store = useScriptStore();
+const { confirm } = useConfirmDialog();
 
 async function playScript(path: string) {
     try {
@@ -92,7 +94,15 @@ async function editScript(path: string) {
 }
 
 async function deleteScript(path: string) {
-    if (!confirm('确定要删除此脚本吗？')) return;
+    const confirmed = await confirm({
+        title: '删除脚本',
+        message: '确定要彻底删除此脚本吗？此操作无法撤销。',
+        confirmText: '删除',
+        cancelText: '取消'
+    });
+    
+    if (!confirmed) return;
+    
     try {
         await invoke('delete_script', { path });
         await store.listSavedScripts();

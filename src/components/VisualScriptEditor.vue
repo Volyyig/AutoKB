@@ -281,8 +281,10 @@ import { save } from '@tauri-apps/plugin-dialog';
 import type { Script } from '../types/script';
 import { getEventDescription, getKeyDisplay } from '../types/script';
 import { groupEvents, formatGroupTitle, type EventGroup } from '../utils/eventGrouping';
+import { useConfirmDialog } from '../composables/useConfirmDialog';
 
 const store = useScriptStore();
+const { confirm } = useConfirmDialog();
 const currentScriptPath = ref<string | null>(null);
 const currentScript = ref<Script | null>(null);
 const groups = ref<EventGroup[]>([]);
@@ -331,7 +333,15 @@ function getIconForType(type: string) {
 // --- Editing Functions ---
 
 async function deleteScript(path: string) {
-  if (!confirm(`确定要彻底删除脚本吗？`)) return;
+  const confirmed = await confirm({
+    title: '删除脚本',
+    message: '确定要彻底删除此脚本吗？此操作无法撤销。',
+    confirmText: '删除',
+    cancelText: '取消'
+  });
+  
+  if (!confirmed) return;
+  
   try {
     await invoke('delete_script', { path });
     if (currentScriptPath.value === path) {
@@ -413,16 +423,34 @@ function deleteEvent(groupIndex: number, eventIndex: number) {
   currentScript.value.events.splice(group.startIndex + eventIndex, 1);
 }
 
-function deleteGroup(groupIndex: number) {
+async function deleteGroup(groupIndex: number) {
   if (!currentScript.value) return;
-  if (!confirm('确定要删除整个组吗？')) return;
+  
+  const confirmed = await confirm({
+    title: '删除事件组',
+    message: '确定要删除整个事件组吗？此操作无法撤销。',
+    confirmText: '删除',
+    cancelText: '取消'
+  });
+  
+  if (!confirmed) return;
+  
   const group = groups.value[groupIndex];
   currentScript.value.events.splice(group.startIndex, group.events.length);
 }
 
-function clearEvents() {
-  if (currentScript.value && confirm('确定清空所有节点吗？')) {
-    currentScript.value.events = [];
+async function clearEvents() {
+  if (currentScript.value) {
+    const confirmed = await confirm({
+      title: '清空所有节点',
+      message: '确定要清空所有节点吗？此操作无法撤销。',
+      confirmText: '清空',
+      cancelText: '取消'
+    });
+    
+    if (confirmed) {
+      currentScript.value.events = [];
+    }
   }
 }
 

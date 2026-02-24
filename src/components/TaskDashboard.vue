@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useScriptStore } from '../stores/scriptStore';
+import { useConfirmDialog } from '../composables/useConfirmDialog';
 
 const store = useScriptStore();
+const { confirm } = useConfirmDialog();
 
 function getStatusClass(task: any) {
     if (!task.enabled) return 'bg-surface-soft text-text-muted';
@@ -11,6 +13,19 @@ function getStatusClass(task: any) {
 function getStatusDotClass(task: any) {
     if (!task.enabled) return 'bg-text-muted/40';
     return 'bg-success animate-pulse';
+}
+
+async function removeTask(taskId: string) {
+    const confirmed = await confirm({
+        title: '删除任务',
+        message: '确定要删除此任务吗？此操作无法撤销。',
+        confirmText: '删除',
+        cancelText: '取消'
+    });
+
+    if (confirmed) {
+        store.removeTask(taskId);
+    }
 }
 </script>
 
@@ -89,7 +104,7 @@ function getStatusDotClass(task: any) {
                                         title="编辑">
                                         <span class="material-symbols-outlined">edit</span>
                                     </button>
-                                    <button @click="store.removeTask(task.id)"
+                                    <button @click="removeTask(task.id)"
                                         class="p-2 hover:bg-error-bg text-error rounded-lg transition-colors"
                                         title="删除">
                                         <span class="material-symbols-outlined">delete</span>
