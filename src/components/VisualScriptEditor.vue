@@ -1,103 +1,87 @@
 <template>
-  <div
-    class="visual-editor fixed inset-0 z-[1000] bg-background-main flex flex-col font-display antialiased overflow-hidden h-screen">
+  <div class="visual-editor">
     <!-- Top Navigation Bar -->
-    <header
-      class="flex h-14 items-center justify-between border-b border-border-main bg-surface-main px-4 shrink-0 z-50">
-      <div class="flex items-center gap-4">
-        <button @click="$emit('close')" class="p-2 hover:bg-surface-soft rounded-lg text-text-muted transition-colors">
+    <header class="editor-header">
+      <div class="header-left">
+        <button @click="$emit('close')" class="back-button">
           <span class="material-symbols-outlined">arrow_back</span>
         </button>
-        <div class="flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary text-3xl">auto_fix_high</span>
-          <h2 class="text-lg font-bold tracking-tight">AutoFlow <span class="text-text-muted font-normal">脚本编辑器</span>
+        <div class="header-title">
+          <span class="material-symbols-outlined title-icon">auto_fix_high</span>
+          <h2 class="title-text">AutoFlow <span class="title-subtitle">脚本编辑器</span>
           </h2>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <div class="flex bg-surface-soft p-1 rounded-lg mr-2 border border-border-main">
-          <button @click="loadCurrentRecording" :disabled="!store.hasEvents"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-surface-main text-sm font-medium transition-all">
-            <span class="material-symbols-outlined text-sm">history</span> 导入录制
+      <div class="header-actions">
+        <div class="action-group">
+          <button @click="loadCurrentRecording" :disabled="!store.hasEvents" class="action-button">
+            <span class="material-symbols-outlined icon-sm">history</span> 导入录制
           </button>
-          <button @click="loadIntoPlayback" :disabled="!currentScript"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-surface-main text-sm font-medium transition-all">
-            <span class="material-symbols-outlined text-sm">play_arrow</span> 测试运行
+          <button @click="loadIntoPlayback" :disabled="!currentScript" class="action-button">
+            <span class="material-symbols-outlined icon-sm">play_arrow</span> 测试运行
           </button>
         </div>
-        <button @click="saveChanges" :disabled="!currentScript"
-          class="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm shadow-primary/20">
-          <span class="material-symbols-outlined text-sm">save</span> {{ currentScriptPath ? '保存修改' : '保存为新脚本' }}
+        <button @click="saveChanges" :disabled="!currentScript" class="save-button">
+          <span class="material-symbols-outlined icon-sm">save</span> {{ currentScriptPath ? '保存修改' : '保存为新脚本' }}
         </button>
       </div>
     </header>
 
     <!-- Main Workspace -->
-    <main class="flex-1 flex overflow-hidden">
+    <main class="main-workspace">
       <!-- Sidebar: Library & Saved Scripts -->
-      <aside class="w-64 border-r border-border-main bg-surface-main flex flex-col shrink-0">
-        <div class="p-4 border-b border-border-main">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-xs font-bold text-text-muted uppercase tracking-wider">已存脚本</h3>
-            <button @click="addNewScript" class="p-1 hover:bg-surface-soft rounded text-primary">
-              <span class="material-symbols-outlined text-sm">add</span>
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-title-row">
+            <h3 class="sidebar-title">已存脚本</h3>
+            <button @click="addNewScript" class="add-script-button">
+              <span class="material-symbols-outlined icon-sm">add</span>
             </button>
           </div>
-          <div class="relative">
-            <span
-              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-lg">search</span>
-            <input
-              class="w-full pl-10 pr-4 py-2 bg-surface-soft border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20"
-              placeholder="搜索脚本..." type="text" />
+          <div class="search-container">
+            <span class="material-symbols-outlined search-icon">search</span>
+            <input class="search-input" placeholder="搜索脚本..." type="text" />
           </div>
         </div>
-        <div class="flex-1 overflow-y-auto p-2 space-y-1">
+        <div class="script-list">
           <div v-for="script in store.savedScripts" :key="script.path" @click="loadScriptForEdit(script.path)"
-            :class="['group flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all',
-              currentScriptPath === script.path ? 'bg-primary/5 text-primary' : 'hover:bg-surface-soft text-text-muted']">
-            <div class="flex items-center gap-2 overflow-hidden">
-              <span class="material-symbols-outlined text-lg opacity-60">description</span>
-              <span class="text-sm font-medium truncate">{{ script.name }}</span>
+            :class="['script-item', currentScriptPath === script.path ? 'active' : 'inactive']">
+            <div class="script-info">
+              <span class="material-symbols-outlined script-icon">description</span>
+              <span class="script-name">{{ script.name }}</span>
             </div>
-            <button @click.stop="deleteScript(script.path)"
-              class="p-1 opacity-0 group-hover:opacity-100 hover:bg-error-bg text-error rounded transition-all">
-              <span class="material-symbols-outlined text-sm">delete</span>
+            <button @click.stop="deleteScript(script.path)" class="delete-script-button">
+              <span class="material-symbols-outlined icon-sm">delete</span>
             </button>
           </div>
-          <div v-if="store.savedScripts.length === 0" class="p-4 text-center text-xs text-text-muted">
+          <div v-if="store.savedScripts.length === 0" class="empty-state">
             暂无已保存脚本
           </div>
         </div>
       </aside>
 
       <!-- Editor Content -->
-      <section class="flex-1 bg-background-main relative overflow-hidden flex flex-col">
-        <div v-if="!currentScript" class="flex-1 flex flex-col items-center justify-center text-text-muted opacity-60">
-          <span class="material-symbols-outlined text-6xl mb-4">edit_square</span>
+      <section class="editor-content">
+        <div v-if="!currentScript" class="empty-editor">
+          <span class="material-symbols-outlined empty-icon">edit_square</span>
           <p>请选择脚本进行编辑或新建</p>
         </div>
         <template v-else>
           <!-- Canvas Toolbar (Simplified) -->
-          <div
-            class="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-surface-main shadow-xl border border-border-main rounded-full px-4 py-2 z-20">
-            <div class="flex items-center gap-2">
-              <input v-model="currentScript.name"
-                class="bg-transparent border-none p-0 text-sm font-bold focus:ring-0 w-32 text-text-main"
-                placeholder="脚本名称..." />
-              <div class="w-px h-4 bg-border-main mx-1"></div>
-              <span class="text-xs font-medium text-text-muted">{{ currentScript.events.length }} 个节点</span>
+          <div class="canvas-toolbar">
+            <div class="toolbar-info">
+              <input v-model="currentScript.name" class="script-name-input" placeholder="脚本名称..." />
+              <div class="toolbar-divider"></div>
+              <span class="node-count">{{ currentScript.events.length }} 个节点</span>
             </div>
-            <div class="flex items-center gap-1 relative">
-              <button @click="showAddMenu = !showAddMenu"
-                class="p-1.5 hover:bg-surface-soft rounded-full text-primary transition-colors">
+            <div class="add-menu-container">
+              <button @click="showAddMenu = !showAddMenu" class="add-button">
                 <span class="material-symbols-outlined">add_circle</span>
               </button>
-              <div v-if="showAddMenu"
-                class="absolute top-full mt-2 left-0 w-48 bg-surface-main shadow-2xl border border-border-main rounded-xl p-2 z-[100]">
+              <div v-if="showAddMenu" class="add-menu">
                 <button v-for="t in ['Delay', 'KeyPress', 'KeyRelease', 'MousePress', 'MouseRelease', 'MouseMove']"
-                  :key="t" @click="addEventTemplate(t)"
-                  class="w-full text-left p-2 hover:bg-surface-soft rounded-lg text-sm flex items-center gap-2">
-                  <span class="material-symbols-outlined text-sm opacity-60">{{ getIconForType(t) }}</span>
+                  :key="t" @click="addEventTemplate(t)" class="add-menu-item">
+                  <span class="material-symbols-outlined menu-item-icon">{{ getIconForType(t) }}</span>
                   {{ formatGroupTitle(t) }}
                 </button>
               </div>
@@ -105,100 +89,83 @@
           </div>
 
           <!-- Canvas Content: List of Event Groups -->
-          <div class="flex-1 overflow-y-auto p-20 py-16 scroll-smooth canvas-grid">
-            <div class="max-w-xl mx-auto flex flex-col items-center space-y-8">
+          <div class="canvas-content canvas-grid">
+            <div class="canvas-inner">
               <!-- Start Node -->
-              <div class="flex flex-col items-center">
-                <div
-                  class="w-40 h-14 bg-surface-main border-2 border-primary rounded-xl flex items-center justify-center shadow-lg">
-                  <span class="material-symbols-outlined text-primary mr-2">play_circle</span>
-                  <span class="font-bold text-sm text-text-main">流程开始</span>
+              <div class="start-node-container">
+                <div class="start-node">
+                  <span class="material-symbols-outlined start-node-icon">play_circle</span>
+                  <span class="start-node-text">流程开始</span>
                 </div>
-                <div class="w-0.5 h-8 bg-border-main mt-2"></div>
+                <div class="connector"></div>
               </div>
 
               <!-- Event Groups -->
-              <div v-for="(group, index) in groups" :key="index" class="w-full flex flex-col items-center">
-                <div @click="toggleGroup(index)" :class="['w-full bg-surface-main border rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden group',
-                  group.expanded ? 'ring-2 ring-primary/20 border-primary/50' : 'border-border-main']">
+              <div v-for="(group, index) in groups" :key="index" class="event-group-container">
+                <div @click="toggleGroup(index)" :class="['event-group', group.expanded ? 'expanded' : '']">
                   <!-- Group Header -->
-                  <div class="p-4 flex items-center justify-between bg-surface-soft">
-                    <div class="flex items-center gap-3">
-                      <span
-                        class="material-symbols-outlined text-primary p-1.5 bg-primary/10 rounded-lg transition-transform group-hover:scale-110">{{
-                          getIconForType(group.type) }}</span>
-                      <div>
-                        <div class="flex items-center gap-2">
-                          <span class="text-sm font-bold text-text-main">{{ formatGroupTitle(group.type) }}</span>
-                          <span
-                            class="text-[10px] px-1.5 py-0.5 bg-surface-soft border border-border-main rounded-full font-bold uppercase text-text-muted">{{
-                              group.events.length }} 步骤</span>
+                  <div class="group-header">
+                    <div class="group-header-left">
+                      <span class="material-symbols-outlined group-icon">{{ getIconForType(group.type) }}</span>
+                      <div class="group-info">
+                        <div class="group-title-row">
+                          <span class="group-title">{{ formatGroupTitle(group.type) }}</span>
+                          <span class="group-badge">{{ group.events.length }} 步骤</span>
                         </div>
-                        <p class="text-[10px] text-text-muted mt-0.5">连续执行 {{ group.events.length }} 个同类动作</p>
+                        <p class="group-description">连续执行 {{ group.events.length }} 个同类动作</p>
                       </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                      <button @click.stop="deleteGroup(index)"
-                        class="p-1.5 hover:bg-error-bg text-error rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-                        <span class="material-symbols-outlined text-lg">delete</span>
+                    <div class="group-header-right">
+                      <button @click.stop="deleteGroup(index)" class="delete-group-button">
+                        <span class="material-symbols-outlined icon-lg">delete</span>
                       </button>
-                      <span class="material-symbols-outlined text-text-muted transition-transform"
-                        :class="{ 'rotate-180': group.expanded }">expand_more</span>
+                      <span class="material-symbols-outlined expand-icon" :class="{ 'rotated': group.expanded }">expand_more</span>
                     </div>
                   </div>
 
                   <!-- Group Details -->
-                  <div v-if="group.expanded" class="p-4 space-y-3 border-t border-border-main">
-                    <div v-for="(event, eIndex) in (group.events as any[])" :key="eIndex"
-                      class="flex items-center justify-between gap-4 p-2 bg-background-main rounded-lg border border-transparent hover:border-border-main transition-colors">
-                      <div class="flex items-center gap-3 overflow-hidden flex-1">
-                        <span class="text-xs text-text-muted font-mono w-4 shrink-0">{{ eIndex + 1 }}</span>
+                  <div v-if="group.expanded" @click.stop class="group-details">
+                    <div v-for="(event, eIndex) in (group.events as any[])" :key="eIndex" class="event-item">
+                      <div class="event-item-left">
+                        <span class="event-index">{{ eIndex + 1 }}</span>
                         <!-- Custom settings per event type -->
-                        <div class="flex-1 flex items-center gap-2">
+                        <div class="event-controls">
                           <template v-if="event.event_type === 'Delay'">
-                            <input type="number" v-model.number="event.duration_ms"
-                              class="w-20 px-2 py-1 text-xs bg-surface-main text-text-main border border-border-main rounded focus:ring-1 focus:ring-primary outline-none"
-                              min="0">
-                            <span class="text-xs text-text-muted">ms</span>
+                            <input type="number" v-model.number="event.duration_ms" class="event-input event-input-small" min="0">
+                            <span class="event-label">ms</span>
                           </template>
                           <template v-else-if="event.event_type === 'KeyPress' || event.event_type === 'KeyRelease'">
                             <button @click="startCapture(index, eIndex)"
-                              :class="['px-3 py-1 text-xs font-mono rounded border border-dashed transition-colors',
-                                capturingIndex?.groupIndex === index && capturingIndex?.eventIndex === eIndex ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-main border-border-main text-text-main']">
+                              :class="['capture-button', capturingIndex?.groupIndex === index && capturingIndex?.eventIndex === eIndex ? 'capturing' : '']">
                               {{ capturingIndex?.groupIndex === index && capturingIndex?.eventIndex === eIndex ?
                                 '等待输入...' : getKeyDisplay(event.key) }}
                             </button>
                           </template>
                           <template v-else-if="event.event_type.startsWith('Mouse')">
-                            <span class="text-xs text-text-muted">X:</span>
-                            <input type="number" v-model.number="event.x"
-                              class="w-14 px-1 py-0.5 text-xs bg-surface-main text-text-main border border-border-main rounded" />
-                            <span class="text-xs text-text-muted ml-1">Y:</span>
-                            <input type="number" v-model.number="event.y"
-                              class="w-14 px-1 py-0.5 text-xs bg-surface-main text-text-main border border-border-main rounded" />
+                            <span class="event-label">X:</span>
+                            <input type="number" v-model.number="event.x" class="event-input event-input-tiny" />
+                            <span class="event-label">Y:</span>
+                            <input type="number" v-model.number="event.y" class="event-input event-input-tiny" />
                           </template>
                         </div>
-                        <span class="text-[10px] text-text-muted truncate opacity-40 hidden md:block">{{
-                          getEventDescription(event) }}</span>
+                        <span class="event-description">{{ getEventDescription(event) }}</span>
                       </div>
-                      <button @click.stop="deleteEvent(index, eIndex)"
-                        class="p-1 hover:text-error transition-colors shrink-0">
-                        <span class="material-symbols-outlined text-sm">close</span>
+                      <button @click.stop="deleteEvent(index, eIndex)" class="delete-event-button">
+                        <span class="material-symbols-outlined icon-sm">close</span>
                       </button>
                     </div>
                   </div>
                 </div>
                 <!-- Connector arrow (if not last) -->
-                <div v-if="index < groups.length - 1" class="w-0.5 h-8 bg-border-main my-1"></div>
+                <div v-if="index < groups.length - 1" class="connector-small"></div>
               </div>
 
               <!-- End Node -->
-              <div class="flex flex-col items-center">
-                <div class="w-0.5 h-8 bg-border-main my-1"></div>
-                <div
-                  class="w-32 h-10 bg-surface-soft border-2 border-border-main rounded-lg flex items-center justify-center text-text-muted">
-                  <span class="material-symbols-outlined text-sm mr-2">logout</span>
-                  <span class="font-bold text-xs uppercase tracking-widest text-text-muted">结束</span>
+              <div class="end-node-container">
+                <div class="connector-small"></div>
+                <div class="end-node">
+                  <span class="material-symbols-outlined end-node-icon">logout</span>
+                  <span class="end-node-text">结束</span>
                 </div>
               </div>
             </div>
@@ -206,65 +173,58 @@
         </template>
 
         <!-- Breadcrumbs -->
-        <div
-          class="h-10 border-t border-border-main bg-surface-main/80 backdrop-blur-sm px-6 flex items-center gap-3 text-[10px] font-bold text-text-muted uppercase tracking-widest z-20">
+        <div class="breadcrumbs">
           <span>工作流库</span>
-          <span class="material-symbols-outlined text-[10px]">chevron_right</span>
-          <span class="text-primary">{{ currentScript?.name || '新脚本' }}</span>
+          <span class="material-symbols-outlined breadcrumb-separator">chevron_right</span>
+          <span class="breadcrumb-active">{{ currentScript?.name || '新脚本' }}</span>
         </div>
       </section>
 
       <!-- Right Sidebar: Properties Configuration (ParamEditor integrated) -->
-      <aside v-if="currentScript" class="w-72 border-l border-border-main bg-surface-main flex flex-col shrink-0">
-        <div class="p-4 border-b border-border-main flex items-center justify-between shadow-sm">
-          <h3 class="font-bold text-sm text-text-main">全局属性</h3>
-          <span class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase">Script
-            Config</span>
+      <aside v-if="currentScript" class="properties-sidebar">
+        <div class="properties-header">
+          <h3 class="properties-title">全局属性</h3>
+          <span class="properties-badge">Script Config</span>
         </div>
-        <div class="flex-1 overflow-y-auto p-4 space-y-6">
-          <div class="space-y-2">
-            <label class="text-[10px] font-black text-text-muted uppercase tracking-wider">脚本描述</label>
-            <textarea v-model="currentScript.description"
-              class="w-full text-xs bg-surface-soft text-text-main border border-border-main rounded-lg px-3 py-2 h-24 outline-none focus:ring-1 focus:ring-primary transition-all"
-              placeholder="简述该流程的作用..."></textarea>
+        <div class="properties-content">
+          <div class="property-section">
+            <label class="property-label">脚本描述</label>
+            <textarea v-model="currentScript.description" class="property-textarea" placeholder="简述该流程的作用..."></textarea>
           </div>
 
-          <div class="space-y-4">
-            <label class="text-[10px] font-black text-text-muted uppercase tracking-wider">执行模式</label>
-            <div class="space-y-4">
-              <div class="space-y-1.5">
-                <div class="flex items-center justify-between text-xs">
-                  <span class="text-text-muted">执行速度</span>
-                  <span class="font-mono font-bold text-primary">{{ currentScript.speed_multiplier }}x</span>
+          <div class="property-section">
+            <label class="property-label">执行模式</label>
+            <div class="execution-mode-section">
+              <div class="slider-container">
+                <div class="slider-header">
+                  <span class="slider-label">执行速度</span>
+                  <span class="slider-value">{{ currentScript.speed_multiplier }}x</span>
                 </div>
                 <input type="range" v-model.number="currentScript.speed_multiplier" min="0.1" max="5.0" step="0.1"
-                  class="w-full h-1.5 bg-border-main rounded-lg appearance-none cursor-pointer accent-primary" />
+                  class="slider-input" />
               </div>
-              <div class="flex items-center justify-between">
-                <span class="text-xs text-text-muted">循环次数 (0=无限)</span>
-                <input type="number" v-model.number="currentScript.loop_config.count"
-                  class="w-20 px-2 py-1.5 text-xs bg-surface-soft text-text-main border border-border-main rounded-lg outline-none focus:ring-1 focus:ring-primary" />
+              <div class="number-input-row">
+                <span class="number-input-label">循环次数 (0=无限)</span>
+                <input type="number" v-model.number="currentScript.loop_config.count" class="number-input" />
               </div>
-              <div class="flex items-center justify-between">
-                <span class="text-xs text-text-muted">循环间隔 (ms)</span>
-                <input type="number" v-model.number="currentScript.loop_config.delay_between_ms"
-                  class="w-20 px-2 py-1.5 text-xs bg-surface-soft text-text-main border border-border-main rounded-lg outline-none focus:ring-1 focus:ring-primary" />
+              <div class="number-input-row">
+                <span class="number-input-label">循环间隔 (ms)</span>
+                <input type="number" v-model.number="currentScript.loop_config.delay_between_ms" class="number-input" />
               </div>
             </div>
           </div>
 
-          <div class="p-4 bg-warning-bg rounded-xl border border-warning-border">
-            <div class="flex gap-2 items-start">
-              <span class="material-symbols-outlined text-warning text-lg">lightbulb</span>
-              <div class="text-[10px] text-warning leading-relaxed font-medium">
+          <div class="info-box">
+            <div class="info-box-content">
+              <span class="material-symbols-outlined info-icon">lightbulb</span>
+              <div class="info-text">
                 编辑器会自动将连续的同类动作（如多个按键）折叠为组，以保持流程整洁度。
               </div>
             </div>
           </div>
         </div>
-        <div class="p-4 border-t border-border-main bg-surface-soft">
-          <button @click="clearEvents"
-            class="w-full py-2.5 bg-surface-main hover:bg-error hover:text-white text-text-muted rounded-lg text-[10px] font-black transition-all uppercase tracking-widest border border-border-main shadow-sm">
+        <div class="properties-footer">
+          <button @click="clearEvents" class="clear-button">
             清空所有节点
           </button>
         </div>
@@ -501,6 +461,418 @@ onMounted(() => refreshScripts());
 </script>
 
 <style scoped>
+/* Editor Container */
+.visual-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background-color: var(--background);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* Header */
+.editor-header {
+  display: flex;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-main);
+  background-color: var(--surface);
+  padding: 0 1rem;
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.back-button {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  transition: background-color 150ms;
+}
+
+.back-button:hover {
+  background-color: var(--surface-soft);
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.title-icon {
+  color: var(--primary);
+  font-size: 1.875rem;
+}
+
+.title-text {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.title-subtitle {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.action-group {
+  display: flex;
+  background-color: var(--surface-soft);
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  margin-right: 0.5rem;
+  border: 1px solid var(--border-main);
+  gap: 1rem
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 150ms;
+}
+
+.action-button:hover {
+  background-color: var(--surface);
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: background-color 150ms;
+  box-shadow: 0 1px 2px 0 rgba(19, 91, 236, 0.2);
+}
+
+.save-button:hover {
+  background-color: rgba(19, 91, 236, 0.9);
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Main Workspace */
+.main-workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 16rem;
+  border-right: 1px solid var(--border-main);
+  background-color: var(--surface);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-main);
+}
+
+.sidebar-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sidebar-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.add-script-button {
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  color: var(--primary);
+}
+
+.add-script-button:hover {
+  background-color: var(--surface-soft);
+}
+
+.search-container {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 1.125rem;
+}
+
+.search-input {
+  width: 100%;
+  padding-left: 2.5rem;
+  padding-right: 1rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  background-color: var(--surface-soft);
+  border: 1px solid var(--border-main);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.search-input:focus {
+  outline: 2px solid rgba(19, 91, 236, 0.2);
+  outline-offset: 0;
+}
+
+.script-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.script-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.script-item:hover {
+  background-color: var(--surface-soft);
+}
+
+.script-item.active {
+  background-color: rgba(19, 91, 236, 0.05);
+  color: var(--primary);
+}
+
+.script-item.inactive {
+  color: var(--text-muted);
+}
+
+.script-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.script-icon {
+  font-size: 1.125rem;
+  opacity: 0.6;
+}
+
+.script-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-script-button {
+  padding: 0.25rem;
+  opacity: 0;
+  border-radius: 0.25rem;
+  color: var(--error);
+  transition: all 150ms;
+}
+
+.script-item:hover .delete-script-button {
+  opacity: 1;
+}
+
+.delete-script-button:hover {
+  background-color: var(--error-bg);
+}
+
+.empty-state {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Editor Content */
+.editor-content {
+  flex: 1;
+  background-color: var(--background);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.empty-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.empty-icon {
+  font-size: 3.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Canvas Toolbar */
+.canvas-toolbar {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--surface);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-main);
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  z-index: 20;
+}
+
+.toolbar-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.script-name-input {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  width: 8rem;
+  color: var(--text-main);
+}
+
+.script-name-input:focus {
+  outline: none;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 1rem;
+  background-color: var(--border-main);
+  margin: 0 0.25rem;
+}
+
+.node-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.add-menu-container {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.add-button {
+  padding: 0.375rem;
+  border-radius: 9999px;
+  color: var(--primary);
+  transition: background-color 150ms;
+}
+
+.add-button:hover {
+  background-color: var(--surface-soft);
+}
+
+.add-menu {
+  position: absolute;
+  top: 100%;
+  margin-top: 0.5rem;
+  left: 0;
+  width: 12rem;
+  background-color: var(--surface);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-main);
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  z-index: 100;
+}
+
+.add-menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.add-menu-item:hover {
+  background-color: var(--surface-soft);
+}
+
+.menu-item-icon {
+  font-size: 0.875rem;
+  opacity: 0.6;
+}
+
+/* Canvas Content */
+.canvas-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 5rem 1.25rem 4rem;
+  scroll-behavior: smooth;
+}
+
 .canvas-grid {
   background-size: 20px 20px;
   background-image: radial-gradient(circle, #e2e8f0 1px, transparent 1px);
@@ -510,13 +882,569 @@ onMounted(() => refreshScripts());
   background-image: radial-gradient(circle, var(--border-main) 1px, transparent 1px);
 }
 
-input[type="range"]::-webkit-slider-thumb {
+.canvas-inner {
+  max-width: 36rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* Flow Nodes */
+.start-node-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.start-node {
+  width: 10rem;
+  height: 3.5rem;
+  background-color: var(--surface);
+  border: 2px solid var(--primary);
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.start-node-icon {
+  color: var(--primary);
+  margin-right: 0.5rem;
+}
+
+.start-node-text {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--text-main);
+}
+
+.connector {
+  width: 2px;
+  height: 2rem;
+  background-color: var(--border-main);
+  margin-top: 0.5rem;
+}
+
+.connector-small {
+  width: 2px;
+  height: 2rem;
+  background-color: var(--border-main);
+  margin: 0.25rem 0;
+}
+
+/* Event Groups */
+.event-group-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.event-group {
+  width: 100%;
+  background-color: var(--surface);
+  border: 1px solid var(--border-main);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 150ms;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.event-group:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.event-group.expanded {
+  box-shadow: 0 0 0 2px rgba(19, 91, 236, 0.2);
+  border-color: rgba(19, 91, 236, 0.5);
+}
+
+.group-header {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--surface-soft);
+}
+
+.group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.group-icon {
+  color: var(--primary);
+  padding: 0.375rem;
+  background-color: rgba(19, 91, 236, 0.1);
+  border-radius: 0.5rem;
+  transition: transform 150ms;
+}
+
+.event-group:hover .group-icon {
+  transform: scale(1.1);
+}
+
+.group-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.group-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.group-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.group-badge {
+  font-size: 0.625rem;
+  padding: 0.125rem 0.375rem;
+  background-color: var(--surface-soft);
+  border: 1px solid var(--border-main);
+  border-radius: 9999px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.group-description {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  margin-top: 0.125rem;
+}
+
+.group-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.delete-group-button {
+  padding: 0.375rem;
+  border-radius: 0.5rem;
+  color: var(--error);
+  opacity: 0;
+  transition: all 150ms;
+}
+
+.event-group:hover .delete-group-button {
+  opacity: 1;
+}
+
+.delete-group-button:hover {
+  background-color: var(--error-bg);
+}
+
+.expand-icon {
+  color: var(--text-muted);
+  transition: transform 150ms;
+}
+
+.expand-icon.rotated {
+  transform: rotate(180deg);
+}
+
+/* Group Details */
+.group-details {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border-main);
+}
+
+.event-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem;
+  background-color: var(--background);
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  transition: border-color 150ms;
+}
+
+.event-item:hover {
+  border-color: var(--border-main);
+}
+
+.event-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  flex: 1;
+}
+
+.event-index {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
+  width: 1rem;
+  flex-shrink: 0;
+}
+
+.event-controls {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.event-input {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  background-color: var(--surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-main);
+  border-radius: 0.25rem;
+  outline: none;
+}
+
+.event-input:focus {
+  outline: 1px solid var(--primary);
+  outline-offset: 0;
+}
+
+.event-input-small {
+  width: 5rem;
+}
+
+.event-input-tiny {
+  width: 3.5rem;
+  padding: 0.125rem 0.25rem;
+}
+
+.event-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.capture-button {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: monospace;
+  border-radius: 0.25rem;
+  border: 1px dashed var(--border-main);
+  background-color: var(--surface);
+  color: var(--text-main);
+  transition: all 150ms;
+}
+
+.capture-button.capturing {
+  background-color: rgba(19, 91, 236, 0.1);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.event-description {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.4;
+}
+
+@media (max-width: 768px) {
+  .event-description {
+    display: none;
+  }
+}
+
+.delete-event-button {
+  padding: 0.25rem;
+  transition: color 150ms;
+  flex-shrink: 0;
+}
+
+.delete-event-button:hover {
+  color: var(--error);
+}
+
+/* End Node */
+.end-node-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.end-node {
+  width: 8rem;
+  height: 2.5rem;
+  background-color: var(--surface-soft);
+  border: 2px solid var(--border-main);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.end-node-icon {
+  font-size: 0.875rem;
+  margin-right: 0.5rem;
+}
+
+.end-node-text {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+  height: 2.5rem;
+  border-top: 1px solid var(--border-main);
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  z-index: 20;
+}
+
+.dark .breadcrumbs {
+  background-color: rgba(30, 41, 59, 0.8);
+}
+
+.breadcrumb-separator {
+  font-size: 0.625rem;
+}
+
+.breadcrumb-active {
+  color: var(--primary);
+}
+
+/* Right Sidebar */
+.properties-sidebar {
+  width: 18rem;
+  border-left: 1px solid var(--border-main);
+  background-color: var(--surface);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.properties-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.properties-title {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--text-main);
+}
+
+.properties-badge {
+  font-size: 0.625rem;
+  background-color: rgba(19, 91, 236, 0.1);
+  color: var(--primary);
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.properties-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.property-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.property-label {
+  font-size: 0.625rem;
+  font-weight: 900;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.property-textarea {
+  /* width: 100%; */
+  resize: none;
+  font-size: 0.75rem;
+  background-color: var(--surface-soft);
+  color: var(--text-main);
+  border: 1px solid var(--border-main);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  height: 6rem;
+  outline: none;
+  transition: all 150ms;
+}
+
+.property-textarea:focus {
+  outline: 1px solid var(--primary);
+  outline-offset: 0;
+}
+
+.execution-mode-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.slider-label {
+  color: var(--text-muted);
+}
+
+.slider-value {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.slider-input {
+  width: 100%;
+  height: 0.375rem;
+  background-color: var(--border-main);
+  border-radius: 0.5rem;
+  appearance: none;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.slider-input::-webkit-slider-thumb {
   appearance: none;
   width: 14px;
   height: 14px;
   background: white;
-  border: 2px solid theme('colors.primary');
+  border: 2px solid var(--primary);
   border-radius: 50%;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.number-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.number-input-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.number-input {
+  width: 5rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  background-color: var(--surface-soft);
+  color: var(--text-main);
+  border: 1px solid var(--border-main);
+  border-radius: 0.5rem;
+  outline: none;
+}
+
+.number-input:focus {
+  outline: 1px solid var(--primary);
+  outline-offset: 0;
+}
+
+.info-box {
+  padding: 1rem;
+  background-color: var(--warning-bg);
+  border-radius: 0.75rem;
+  border: 1px solid var(--warning-border);
+}
+
+.info-box-content {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.info-icon {
+  color: var(--warning);
+  font-size: 1.125rem;
+}
+
+.info-text {
+  font-size: 0.625rem;
+  color: var(--warning);
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.properties-footer {
+  padding: 1rem;
+  border-top: 1px solid var(--border-main);
+  background-color: var(--surface-soft);
+}
+
+.clear-button {
+  width: 100%;
+  padding: 0.625rem;
+  background-color: var(--surface);
+  color: var(--text-muted);
+  border-radius: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 900;
+  transition: all 150ms;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--border-main);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.clear-button:hover {
+  background-color: var(--error);
+  color: white;
+}
+
+/* Icon size utilities */
+.icon-sm {
+  font-size: 0.875rem; /* 14px */
+}
+
+.icon-lg {
+  font-size: 1.125rem; /* 18px */
 }
 </style>

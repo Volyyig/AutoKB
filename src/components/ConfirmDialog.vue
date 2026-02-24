@@ -1,12 +1,12 @@
 <template>
   <Transition name="dialog">
-    <div v-if="dialogState.isVisible" class="fixed inset-0 z-[9998] flex items-center justify-center" @click="handleBackdropClick">
+    <div v-if="dialogState.isVisible" class="dialog-overlay" @click="handleBackdropClick">
       <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+      <div class="dialog-backdrop"></div>
       
       <!-- Dialog Container -->
       <div 
-        class="relative z-[9999] bg-surface-main rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        class="dialog-container"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="dialogState.title ? 'dialog-title' : undefined"
@@ -14,12 +14,12 @@
         @click.stop
       >
         <!-- Dialog Content -->
-        <div class="p-6">
+        <div class="dialog-content">
           <!-- Title -->
           <h3 
             v-if="dialogState.title" 
             id="dialog-title"
-            class="text-lg font-bold text-text-main mb-3"
+            class="dialog-title"
           >
             {{ dialogState.title }}
           </h3>
@@ -27,18 +27,18 @@
           <!-- Message -->
           <p 
             id="dialog-message"
-            class="text-text-muted text-sm leading-relaxed"
+            class="dialog-message"
           >
             {{ dialogState.message }}
           </p>
         </div>
         
         <!-- Actions -->
-        <div class="flex items-center justify-end gap-3 px-6 py-4 bg-surface-soft border-t border-border-main">
+        <div class="dialog-actions">
           <button
             ref="cancelButtonRef"
             @click="handleCancel"
-            class="px-4 py-2 rounded-lg font-medium text-sm text-text-muted hover:bg-surface-main transition-colors"
+            class="dialog-button dialog-button-cancel"
           >
             {{ dialogState.cancelText }}
           </button>
@@ -46,8 +46,8 @@
             ref="confirmButtonRef"
             @click="handleConfirm"
             :class="[
-              'px-4 py-2 rounded-lg font-medium text-sm text-white transition-colors',
-              dialogState.confirmButtonClass || 'bg-primary hover:bg-primary/90'
+              'dialog-button dialog-button-confirm',
+              dialogState.confirmButtonClass
             ]"
           >
             {{ dialogState.confirmText }}
@@ -113,14 +113,108 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Dialog overlay - fixed full screen with flex centering */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Dialog backdrop - blurred dark background */
+.dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+/* Dialog container - the modal box */
+.dialog-container {
+  position: relative;
+  z-index: 9999;
+  background-color: var(--surface);
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 1rem;
+  overflow: hidden;
+}
+
+/* Dialog content area */
+.dialog-content {
+  padding: 1.5rem;
+}
+
+/* Dialog title */
+.dialog-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.75rem;
+}
+
+/* Dialog message */
+.dialog-message {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.625;
+}
+
+/* Dialog actions footer */
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background-color: var(--surface-soft);
+  border-top: 1px solid var(--border-main);
+}
+
+/* Base button styles */
+.dialog-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background-color 150ms, color 150ms;
+  border: none;
+  cursor: pointer;
+}
+
+/* Cancel button */
+.dialog-button-cancel {
+  color: var(--text-muted);
+  background-color: transparent;
+}
+
+.dialog-button-cancel:hover {
+  background-color: var(--surface);
+}
+
+/* Confirm button - default primary style */
+.dialog-button-confirm {
+  color: white;
+  background-color: var(--primary);
+}
+
+.dialog-button-confirm:hover {
+  background-color: var(--primary);
+  opacity: 0.9;
+}
+
 /* Dialog transition animations */
 .dialog-enter-active,
 .dialog-leave-active {
   transition: opacity 200ms ease-out;
 }
 
-.dialog-enter-active .relative,
-.dialog-leave-active .relative {
+.dialog-enter-active .dialog-container,
+.dialog-leave-active .dialog-container {
   transition: transform 200ms ease-out, opacity 200ms ease-out;
 }
 
@@ -129,14 +223,14 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-.dialog-enter-from .relative,
-.dialog-leave-to .relative {
+.dialog-enter-from .dialog-container,
+.dialog-leave-to .dialog-container {
   transform: scale(0.95);
   opacity: 0;
 }
 
-.dialog-enter-to .relative,
-.dialog-leave-from .relative {
+.dialog-enter-to .dialog-container,
+.dialog-leave-from .dialog-container {
   transform: scale(1);
   opacity: 1;
 }
