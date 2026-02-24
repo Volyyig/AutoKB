@@ -1,12 +1,9 @@
-/**
- * Pinia store for script state management
- */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { save, open } from '@tauri-apps/plugin-dialog';
-import type { Script, ScriptEvent, MacroDefinition, AppState, HotkeyEvent, SavedScript } from '../types/script';
+import type { Script, ScriptEvent, Task, AppState, HotkeyEvent, SavedScript } from '../types/script';
 import { createEmptyScript } from '../types/script';
 
 export interface Notification {
@@ -21,14 +18,147 @@ export const useScriptStore = defineStore('script', () => {
     const currentScript = ref<Script>(createEmptyScript());
     const isRecording = ref(false);
     const isPlaying = ref(false);
-    const isMacroActive = ref(false);
-    const macros = ref<MacroDefinition[]>([]);
+    const isTaskListenerActive = ref(false);
+    const tasks = ref<Task[]>([]);
     const savedScripts = ref<SavedScript[]>([]);
     const selectedEventIndex = ref<number | null>(null);
     const statusMessage = ref('就绪');
     const currentView = ref<'home' | 'macro-editor' | 'visual-editor'>('home');
+    const activeTab = ref<'tasks' | 'scripts' | 'logs' | 'settings'>('tasks');
     const notifications = ref<Notification[]>([]);
     let nextNotificationId = 0;
+
+    // Appearance State
+    const theme = ref({
+        primary: localStorage.getItem('theme-primary') || '#135bec',
+        background: localStorage.getItem('theme-background') || '#f6f6f8',
+        surface: localStorage.getItem('theme-surface') || '#ffffff',
+        surfaceSoft: localStorage.getItem('theme-surface-soft') || '#f8fafc',
+        textMain: localStorage.getItem('theme-text-main') || '#0f172a',
+        textMuted: localStorage.getItem('theme-text-muted') || '#64748b',
+        borderMain: localStorage.getItem('theme-border-main') || '#e2e8f0',
+        // Status colors - main
+        success: localStorage.getItem('theme-success') || '#22c55e',
+        error: localStorage.getItem('theme-error') || '#ef4444',
+        warning: localStorage.getItem('theme-warning') || '#f59e0b',
+        info: localStorage.getItem('theme-info') || '#3b82f6',
+        // Status colors - background
+        successBg: localStorage.getItem('theme-successBg') || '#f0fdf4',
+        errorBg: localStorage.getItem('theme-errorBg') || '#fef2f2',
+        warningBg: localStorage.getItem('theme-warningBg') || '#fffbeb',
+        infoBg: localStorage.getItem('theme-infoBg') || '#eff6ff',
+        // Status colors - border
+        successBorder: localStorage.getItem('theme-successBorder') || '#bbf7d0',
+        errorBorder: localStorage.getItem('theme-errorBorder') || '#fecaca',
+        warningBorder: localStorage.getItem('theme-warningBorder') || '#fde68a',
+        infoBorder: localStorage.getItem('theme-infoBorder') || '#bfdbfe',
+        isDark: localStorage.getItem('theme-dark') === 'true'
+    });
+
+    const themePresets = [
+        {
+            name: '清新蓝',
+            primary: '#135bec', background: '#f6f6f8', surface: '#ffffff',
+            surfaceSoft: '#f8fafc', textMain: '#0f172a', textMuted: '#64748b',
+            borderMain: '#e2e8f0',
+            success: '#22c55e', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6',
+            successBg: '#f0fdf4', errorBg: '#fef2f2', warningBg: '#fffbeb', infoBg: '#eff6ff',
+            successBorder: '#bbf7d0', errorBorder: '#fecaca', warningBorder: '#fde68a', infoBorder: '#bfdbfe',
+            isDark: false
+        },
+        {
+            name: '深邃蓝',
+            primary: '#3b82f6', background: '#0f172a', surface: '#1e293b',
+            surfaceSoft: '#1e293b80', textMain: '#f8fafc', textMuted: '#94a3b8',
+            borderMain: '#1e293b',
+            success: '#4ade80', error: '#f87171', warning: '#fbbf24', info: '#60a5fa',
+            successBg: '#14532d', errorBg: '#7f1d1d', warningBg: '#78350f', infoBg: '#1e3a8a',
+            successBorder: '#166534', errorBorder: '#991b1b', warningBorder: '#92400e', infoBorder: '#1e40af',
+            isDark: true
+        },
+        {
+            name: '紫色魅影',
+            primary: '#8b5cf6', background: '#020617', surface: '#0f172a',
+            surfaceSoft: '#1e293b', textMain: '#f8fafc', textMuted: '#94a3b8',
+            borderMain: '#1e293b',
+            success: '#4ade80', error: '#f87171', warning: '#fbbf24', info: '#60a5fa',
+            successBg: '#14532d', errorBg: '#7f1d1d', warningBg: '#78350f', infoBg: '#1e3a8a',
+            successBorder: '#166534', errorBorder: '#991b1b', warningBorder: '#92400e', infoBorder: '#1e40af',
+            isDark: true
+        },
+        {
+            name: '极简白',
+            primary: '#0f172a', background: '#ffffff', surface: '#ffffff',
+            surfaceSoft: '#f1f5f9', textMain: '#0f172a', textMuted: '#64748b',
+            borderMain: '#f1f5f9',
+            success: '#22c55e', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6',
+            successBg: '#f0fdf4', errorBg: '#fef2f2', warningBg: '#fffbeb', infoBg: '#eff6ff',
+            successBorder: '#bbf7d0', errorBorder: '#fecaca', warningBorder: '#fde68a', infoBorder: '#bfdbfe',
+            isDark: false
+        },
+    ];
+
+    function applyTheme() {
+        const root = document.documentElement;
+        root.style.setProperty('--primary', theme.value.primary);
+        root.style.setProperty('--background', theme.value.background);
+        root.style.setProperty('--surface', theme.value.surface);
+        root.style.setProperty('--surface-soft', theme.value.surfaceSoft);
+        root.style.setProperty('--text-main', theme.value.textMain);
+        root.style.setProperty('--text-muted', theme.value.textMuted);
+        root.style.setProperty('--border-main', theme.value.borderMain);
+
+        // Apply status colors - main
+        root.style.setProperty('--success', theme.value.success);
+        root.style.setProperty('--error', theme.value.error);
+        root.style.setProperty('--warning', theme.value.warning);
+        root.style.setProperty('--info', theme.value.info);
+
+        // Apply status colors - background
+        root.style.setProperty('--success-bg', theme.value.successBg);
+        root.style.setProperty('--error-bg', theme.value.errorBg);
+        root.style.setProperty('--warning-bg', theme.value.warningBg);
+        root.style.setProperty('--info-bg', theme.value.infoBg);
+
+        // Apply status colors - border
+        root.style.setProperty('--success-border', theme.value.successBorder);
+        root.style.setProperty('--error-border', theme.value.errorBorder);
+        root.style.setProperty('--warning-border', theme.value.warningBorder);
+        root.style.setProperty('--info-border', theme.value.infoBorder);
+
+        if (theme.value.isDark) {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+
+        // Save to localStorage
+        localStorage.setItem('theme-primary', theme.value.primary);
+        localStorage.setItem('theme-background', theme.value.background);
+        localStorage.setItem('theme-surface', theme.value.surface);
+        localStorage.setItem('theme-surface-soft', theme.value.surfaceSoft);
+        localStorage.setItem('theme-text-main', theme.value.textMain);
+        localStorage.setItem('theme-text-muted', theme.value.textMuted);
+        localStorage.setItem('theme-border-main', theme.value.borderMain);
+        localStorage.setItem('theme-success', theme.value.success);
+        localStorage.setItem('theme-error', theme.value.error);
+        localStorage.setItem('theme-warning', theme.value.warning);
+        localStorage.setItem('theme-info', theme.value.info);
+        localStorage.setItem('theme-successBg', theme.value.successBg);
+        localStorage.setItem('theme-errorBg', theme.value.errorBg);
+        localStorage.setItem('theme-warningBg', theme.value.warningBg);
+        localStorage.setItem('theme-infoBg', theme.value.infoBg);
+        localStorage.setItem('theme-successBorder', theme.value.successBorder);
+        localStorage.setItem('theme-errorBorder', theme.value.errorBorder);
+        localStorage.setItem('theme-warningBorder', theme.value.warningBorder);
+        localStorage.setItem('theme-infoBorder', theme.value.infoBorder);
+        localStorage.setItem('theme-dark', String(theme.value.isDark));
+    }
+
+    function setTheme(newTheme: any) {
+        theme.value = { ...newTheme };
+        applyTheme();
+    }
 
     // Computed
     const eventCount = computed(() => currentScript.value.events.length);
@@ -44,9 +174,6 @@ export const useScriptStore = defineStore('script', () => {
 
     // Actions
 
-    /**
-     * Show a notification toast
-     */
     function showNotification(message: string, type: 'success' | 'error' | 'info' = 'info', duration = 3000) {
         const id = nextNotificationId++;
         const notification: Notification = { id, message, type, duration };
@@ -59,9 +186,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Remove a notification by ID
-     */
     function removeNotification(id: number) {
         const index = notifications.value.findIndex(n => n.id === id);
         if (index !== -1) {
@@ -69,23 +193,17 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Start recording events
-     */
     async function startRecording() {
         try {
             await invoke('start_recording');
             isRecording.value = true;
             currentScript.value.events = [];
-            statusMessage.value = '正在录制... 按 F9 停止';
+            statusMessage.value = '正在录制...';
         } catch (error) {
             statusMessage.value = `录制失败: ${error}`;
         }
     }
 
-    /**
-     * Stop recording and get recorded events
-     */
     async function stopRecording() {
         try {
             const events = await invoke<ScriptEvent[]>('stop_recording');
@@ -99,9 +217,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Toggle recording state
-     */
     async function toggleRecording() {
         if (isRecording.value) {
             await stopRecording();
@@ -110,9 +225,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Start playback
-     */
     async function startPlayback() {
         if (!hasEvents.value) {
             statusMessage.value = '没有可播放的事件';
@@ -122,15 +234,12 @@ export const useScriptStore = defineStore('script', () => {
         try {
             await invoke('play_script', { script: currentScript.value });
             isPlaying.value = true;
-            statusMessage.value = '正在播放... 按 F10 停止';
+            statusMessage.value = '正在播放...';
         } catch (error) {
             statusMessage.value = `播放失败: ${error}`;
         }
     }
 
-    /**
-     * Stop playback
-     */
     async function stopPlayback() {
         try {
             await invoke('stop_playback');
@@ -141,9 +250,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Toggle playback state
-     */
     async function togglePlayback() {
         if (isPlaying.value) {
             await stopPlayback();
@@ -152,9 +258,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Save script to file
-     */
     async function saveScript() {
         try {
             const defaultDir = await invoke<string>('get_scripts_dir');
@@ -166,16 +269,13 @@ export const useScriptStore = defineStore('script', () => {
             if (path) {
                 await invoke('save_script', { script: currentScript.value, path });
                 statusMessage.value = `已保存至 ${path}`;
-                await listSavedScripts(); // Refresh saved scripts list
+                await listSavedScripts();
             }
         } catch (error) {
             statusMessage.value = `保存失败: ${error}`;
         }
     }
 
-    /**
-     * Load script from file
-     */
     async function loadScript() {
         try {
             const defaultDir = await invoke<string>('get_scripts_dir');
@@ -186,31 +286,35 @@ export const useScriptStore = defineStore('script', () => {
             });
 
             if (path) {
-                const script = await invoke<Script>('load_script', { path });
-                currentScript.value = script;
-                statusMessage.value = `已加载 ${script.name}`;
+                await loadScriptByPath(path as string);
             }
         } catch (error) {
             statusMessage.value = `加载失败: ${error}`;
         }
     }
 
-    /**
-     * Update event delay at index
-     */
+    async function loadScriptByPath(path: string) {
+        try {
+            const script = await invoke<Script>('load_script', { path });
+            currentScript.value = script;
+            statusMessage.value = `已加载 ${script.name}`;
+            return script;
+        } catch (error) {
+            statusMessage.value = `加载失败: ${error}`;
+            throw error;
+        }
+    }
+
     async function updateEventDelay(index: number, delayMs: number) {
         const events = await invoke<ScriptEvent[]>('update_event_delay', {
             events: currentScript.value.events,
             index,
-            delayMs,
+            delay_ms: delayMs,
         });
         currentScript.value.events = events;
         currentScript.value.modified_at = new Date().toISOString();
     }
 
-    /**
-     * Delete event at index
-     */
     async function deleteEvent(index: number) {
         const events = await invoke<ScriptEvent[]>('delete_event', {
             events: currentScript.value.events,
@@ -223,9 +327,6 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Scale all delays
-     */
     async function scaleDelays(factor: number) {
         const events = await invoke<ScriptEvent[]>('scale_delays', {
             events: currentScript.value.events,
@@ -235,37 +336,25 @@ export const useScriptStore = defineStore('script', () => {
         currentScript.value.modified_at = new Date().toISOString();
     }
 
-    /**
-     * Update loop config
-     */
     function updateLoopConfig(count: number, delayBetweenMs: number) {
         currentScript.value.loop_config.count = count;
         currentScript.value.loop_config.delay_between_ms = delayBetweenMs;
         currentScript.value.modified_at = new Date().toISOString();
     }
 
-    /**
-     * Update speed multiplier
-     */
     function updateSpeed(multiplier: number) {
         currentScript.value.speed_multiplier = multiplier;
         currentScript.value.modified_at = new Date().toISOString();
     }
 
-    /**
-     * Load macros from backend
-     */
-    async function loadMacros() {
+    async function loadTasks() {
         try {
-            macros.value = await invoke<MacroDefinition[]>('get_all_macros');
+            tasks.value = await invoke<Task[]>('get_all_tasks');
         } catch (error) {
-            console.error('Failed to load macros:', error);
+            console.error('Failed to load tasks:', error);
         }
     }
 
-    /**
-     * List saved scripts
-     */
     async function listSavedScripts() {
         try {
             savedScripts.value = await invoke<SavedScript[]>('list_saved_scripts');
@@ -274,174 +363,117 @@ export const useScriptStore = defineStore('script', () => {
         }
     }
 
-    /**
-     * Toggle macro listener
-     */
-    async function toggleMacroListener() {
+    async function toggleTaskListener() {
         try {
-            if (isMacroActive.value) {
-                await invoke('stop_macro_listener');
-                isMacroActive.value = false;
-                statusMessage.value = '宏监听已停止';
+            if (isTaskListenerActive.value) {
+                await invoke('stop_task_listener');
+                isTaskListenerActive.value = false;
+                statusMessage.value = '任务监听已停止';
             } else {
-                await invoke('start_macro_listener');
-                isMacroActive.value = true;
-                statusMessage.value = '宏监听已激活';
+                await invoke('start_task_listener');
+                isTaskListenerActive.value = true;
+                statusMessage.value = '任务监听已激活';
             }
         } catch (error) {
-            statusMessage.value = `宏切换失败: ${error}`;
+            statusMessage.value = `任务监听切换失败: ${error}`;
         }
     }
 
-    /**
-     * Create macro binding
-     */
-    async function createMacroBinding(
-        name: String,
-        triggerType: String,
-        triggerValue: String,
-        scriptPath: String
+    async function createTaskBinding(
+        name: string,
+        triggerKey?: string,
+        stopKey?: string,
+        scriptPath?: string
     ) {
         try {
-            const macro = await invoke<MacroDefinition>('create_macro_binding', {
+            const task = await invoke<Task>('create_task_binding', {
                 name,
-                triggerType,
-                triggerValue,
+                triggerKey,
+                stopKey,
                 scriptPath,
             });
-            macros.value.push(macro);
-            statusMessage.value = `宏 "${name}" 已创建`;
+            tasks.value.push(task);
+            statusMessage.value = `任务 "${name}" 已创建`;
         } catch (error) {
-            statusMessage.value = `创建宏失败: ${error}`;
+            statusMessage.value = `创建任务失败: ${error}`;
         }
     }
 
-    /**
-     * Remove macro
-     */
-    async function removeMacro(id: string) {
+    async function removeTask(id: string) {
         try {
-            await invoke('remove_macro', { id });
-            macros.value = macros.value.filter(m => m.id !== id);
-            statusMessage.value = '宏已删除';
+            await invoke('remove_task', { id });
+            tasks.value = tasks.value.filter(t => t.id !== id);
+            statusMessage.value = '任务已删除';
         } catch (error) {
-            statusMessage.value = `删除宏失败: ${error}`;
+            statusMessage.value = `删除任务失败: ${error}`;
         }
     }
 
-    /**
-     * Toggle macro enabled state
-     */
-    async function toggleMacroEnabled(id: string, enabled: boolean) {
+    async function toggleTaskEnabled(id: string, enabled: boolean) {
         try {
-            await invoke('toggle_macro', { id, enabled });
-            const macro = macros.value.find(m => m.id === id);
-            if (macro) {
-                macro.enabled = enabled;
+            await invoke('toggle_task', { id, enabled });
+            const task = tasks.value.find(t => t.id === id);
+            if (task) {
+                task.enabled = enabled;
             }
         } catch (error) {
-            console.error('Failed to toggle macro:', error);
+            console.error('Failed to toggle task:', error);
         }
     }
 
-    /**
-     * Clear current script
-     */
     function clearScript() {
         currentScript.value = createEmptyScript();
         selectedEventIndex.value = null;
         statusMessage.value = '脚本已清空';
     }
 
-    /**
-     * Create a new draft script
-     */
     function createNewDraftScript(): Script {
         const script = createEmptyScript();
         script.name = `新建脚本_${new Date().toLocaleTimeString().replace(/:/g, '-')}`;
         return script;
     }
 
-    /**
-     * Sync state with backend
-     */
     async function syncState() {
         try {
             const state = await invoke<AppState>('get_app_state');
             isRecording.value = state.recording;
             isPlaying.value = state.playing;
-            isMacroActive.value = state.macro_active;
+            // Note: backend field name changed in get_app_state 
+            isTaskListenerActive.value = (state as any).task_listener_active;
         } catch (error) {
             console.error('Failed to sync state:', error);
         }
     }
 
-    /**
-     * Initialize store - setup hotkey listener
-     */
     async function init() {
-        // Listen for hotkey events from backend
         await listen<HotkeyEvent>('hotkey-event', (event) => {
             const payload = event.payload;
             isRecording.value = payload.recording;
             isPlaying.value = payload.playing;
 
             switch (payload.action) {
-                case 'recording-started':
-                    currentScript.value.events = [];
-                    statusMessage.value = '正在录制... 按 F9 停止';
-                    break;
-                case 'recording-stopped':
-                    // Fetch recorded events
-                    invoke<ScriptEvent[]>('get_recorded_events').then(events => {
-                        currentScript.value.events = events;
-                        statusMessage.value = `录制完成 (${events.length} 个事件)`;
-                    });
-                    break;
-                case 'playback-requested':
-                    // Start playback with current script
-                    if (hasEvents.value && !isPlaying.value) {
-                        startPlayback();
-                    }
+                case 'emergency-stop':
+                    statusMessage.value = '紧急停止';
                     break;
                 case 'playback-stopped':
                     statusMessage.value = '播放已停止';
                     break;
-                case 'emergency-stop':
-                    statusMessage.value = '紧急停止';
-                    break;
             }
         });
 
-        // Sync initial state
         await syncState();
-        await loadMacros();
+        await loadTasks();
         await listSavedScripts();
+        applyTheme();
     }
 
-    /**
-     * Handle frontend keyboard events (when window is focused)
-     */
     async function handleFrontendEvent(e: KeyboardEvent) {
-        // Handle shortcuts first
-        if (e.key === 'F9' && e.type === 'keydown') {
-            await toggleRecording();
-            return;
-        }
-        if (e.key === 'F10' && e.type === 'keydown') {
-            await togglePlayback();
-            return;
-        }
-
-        // Only handle recording events if recording
         if (!isRecording.value) return;
 
-        // Map key to Backend format
         let keyPayload;
         if (e.key.length === 1) {
-            keyPayload = { Char: e.key };
+            keyPayload = { type: 'Char', value: e.key };
         } else {
-            // Map common keys to match Rust rdev names
             let keyName = e.key;
             const keyMap: Record<string, string> = {
                 ' ': 'Space',
@@ -458,15 +490,14 @@ export const useScriptStore = defineStore('script', () => {
             if (keyMap[keyName]) {
                 keyName = keyMap[keyName];
             }
-            keyPayload = { Special: keyName };
+            keyPayload = { type: 'Special', value: keyName };
         }
 
         try {
             await invoke('record_frontend_event', {
                 event: {
                     event_type: e.type === 'keydown' ? 'KeyPress' : 'KeyRelease',
-                    key: keyPayload,
-                    delay_ms: 0 // Backend will override
+                    key: keyPayload
                 }
             });
         } catch (error) {
@@ -479,12 +510,13 @@ export const useScriptStore = defineStore('script', () => {
         currentScript,
         isRecording,
         isPlaying,
-        isMacroActive,
-        macros,
+        isTaskListenerActive,
+        tasks,
         savedScripts,
         selectedEventIndex,
         statusMessage,
         currentView,
+        activeTab,
         // Computed
         eventCount,
         totalDuration,
@@ -498,25 +530,29 @@ export const useScriptStore = defineStore('script', () => {
         togglePlayback,
         saveScript,
         loadScript,
+        loadScriptByPath,
         updateEventDelay,
         deleteEvent,
         scaleDelays,
         updateLoopConfig,
         updateSpeed,
-        loadMacros,
+        loadTasks,
         listSavedScripts,
-        toggleMacroListener,
-        createMacroBinding,
-        removeMacro,
-        toggleMacroEnabled,
+        toggleTaskListener,
+        createTaskBinding,
+        removeTask,
+        toggleTaskEnabled,
         clearScript,
         syncState,
         init,
         handleFrontendEvent,
         createNewDraftScript,
-        // Notifications
         notifications,
         showNotification,
-        removeNotification
+        removeNotification,
+        theme,
+        setTheme,
+        themePresets,
+        applyTheme
     };
 });

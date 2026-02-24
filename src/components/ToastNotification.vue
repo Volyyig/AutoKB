@@ -36,11 +36,11 @@ const store = useScriptStore();
     display: flex;
     align-items: center;
     padding: 12px 16px;
-    background-color: var(--color-bg-secondary);
-    color: var(--color-text-primary);
+    background-color: var(--surface);
+    color: var(--text-main);
     border-radius: 6px;
-    box-shadow: var(--shadow-md);
-    border-left: 4px solid var(--color-accent);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    border-left: 4px solid var(--primary);
     min-width: 250px;
     max-width: 400px;
     cursor: pointer;
@@ -49,15 +49,15 @@ const store = useScriptStore();
 }
 
 .toast.success {
-    border-left-color: var(--color-success);
+    border-left-color: var(--success);
 }
 
 .toast.error {
-    border-left-color: var(--color-danger);
+    border-left-color: var(--error);
 }
 
 .toast.info {
-    border-left-color: var(--color-accent);
+    border-left-color: var(--primary);
 }
 
 .toast-icon {
@@ -73,12 +73,12 @@ const store = useScriptStore();
 }
 
 .toast.success .toast-icon {
-    color: var(--color-success);
+    color: var(--success);
     background-color: rgba(16, 185, 129, 0.1);
 }
 
 .toast.error .toast-icon {
-    color: var(--color-danger);
+    color: var(--error);
     background-color: rgba(239, 68, 68, 0.1);
 }
 

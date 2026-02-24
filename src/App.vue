@@ -1,338 +1,403 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import ControlBar from './components/ControlBar.vue';
-import EventList from './components/EventList.vue';
-import ParamEditor from './components/ParamEditor.vue';
-import MacroEditor from './components/MacroEditor.vue';
+import TaskDashboard from './components/TaskDashboard.vue';
+import ScriptLibrary from './components/ScriptLibrary.vue';
+import SettingsView from './components/SettingsView.vue';
 import VisualScriptEditor from './components/VisualScriptEditor.vue';
 import ToastNotification from './components/ToastNotification.vue';
+import ConfirmDialog from './components/ConfirmDialog.vue';
 import { useScriptStore } from './stores/scriptStore';
-import { formatDuration } from './types/script';
 
 const store = useScriptStore();
 
-// Global key handler for shortcuts that should work even when window is focused
-async function handleKeydown(e: KeyboardEvent) {
-  await store.handleFrontendEvent(e);
-}
-
 onMounted(async () => {
-  // Show main window after setup is complete (prevents white flash)
   invoke('release_main_window');
   await invoke('release_overlay_window');
-
   await store.init();
-  window.addEventListener('keydown', handleKeydown);
-  window.addEventListener('keyup', (e) => store.handleFrontendEvent(e));
 });
 
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
-  window.removeEventListener('keyup', (e) => store.handleFrontendEvent(e)); // Ensure consistent removal
-});
+const navItems = [
+  { id: 'tasks', name: '任务', icon: 'account_tree' },
+  { id: 'scripts', name: '脚本', icon: 'edit_note' },
+  { id: 'logs', name: '日志', icon: 'description' },
+  { id: 'settings', name: '设置', icon: 'settings' },
+];
 </script>
 
 <template>
-  <div class="app">
-    <!-- Main View -->
-    <div class="main-view" v-show="store.currentView === 'home'">
-      <header class="header">
-        <div class="logo-area">
-          <span class="logo-icon">🤖</span>
-          <h1 class="title">AutoKB</h1>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-container">
+          <span class="material-symbols-outlined logo-icon">auto_fix_high</span>
         </div>
-        <div class="status-bar">
-          <span class="status-dot" :class="{
-            'recording': store.isRecording,
-            'playing': store.isPlaying
-          }"></span>
-          <span class="status-text">{{ store.statusMessage }}</span>
+        <div class="app-info">
+          <h1 class="app-title">AutoKB</h1>
+          <p class="app-version">版本 v2.4.0</p>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button v-for="item in navItems" :key="item.id" @click="store.activeTab = item.id as any" :class="[
+          'nav-button',
+          store.activeTab === item.id ? 'active' : 'inactive'
+        ]">
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+          <span>{{ item.name }}</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button @click="store.currentView = 'visual-editor'" class="new-script-button">
+          <span class="material-symbols-outlined">add_circle</span>
+          <span>新建脚本</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <h2 class="header-title">Desktop Automation</h2>
+          <div class="search-wrapper">
+            <span class="material-symbols-outlined search-icon">search</span>
+            <input class="search-input" placeholder="搜索任务..." type="text" />
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="status-indicator">
+            <span :class="['status-dot', store.isRecording ? 'recording' : store.isPlaying ? 'playing' : 'idle']"></span>
+            <span class="status-text">{{ store.statusMessage }}</span>
+          </div>
+          <button class="notification-button">
+            <span class="material-symbols-outlined">notifications</span>
+            <span class="notification-badge"></span>
+          </button>
         </div>
       </header>
 
-      <ControlBar />
-
-      <main class="main-content">
-        <section class="panel event-panel">
-          <div class="panel-header">
-            <h2>当前脚本</h2>
-            <div class="panel-actions">
-              <span class="event-count">{{ store.eventCount }} 个事件</span>
-              <span class="duration" v-if="store.totalDuration > 0">
-                {{ formatDuration(store.totalDuration) }}
-              </span>
-              <button class="btn-icon" @click="store.clearScript" title="清空脚本">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
+      <!-- Dashboard Content -->
+      <div class="content-area">
+        <Transition name="page" mode="out-in">
+          <div :key="store.activeTab">
+            <TaskDashboard v-if="store.activeTab === 'tasks'" />
+            <div v-else-if="store.activeTab === 'scripts'">
+              <ScriptLibrary />
+            </div>
+            <div v-else-if="store.activeTab === 'logs'" class="logs-placeholder">
+              运行日志（正在开发中...）
+            </div>
+            <div v-else-if="store.activeTab === 'settings'">
+              <SettingsView />
             </div>
           </div>
-          <div class="panel-body">
-            <EventList />
-          </div>
-        </section>
-
-        <aside class="panel settings-panel">
-          <div class="panel-header">
-            <h2>设置</h2>
-          </div>
-          <ParamEditor />
-        </aside>
-      </main>
-
-      <footer class="footer">
-        <div class="shortcuts">
-          <span class="shortcut"><strong>F9</strong> 开始/停止录制</span>
-          <span class="shortcut"><strong>F10</strong> 开始/停止回放</span>
-        </div>
-      </footer>
-    </div>
-
-    <!-- Macro Editor Overlay -->
-    <Transition name="slide-up">
-      <MacroEditor v-if="store.currentView === 'macro-editor'" />
-    </Transition>
+        </Transition>
+      </div>
+    </main>
 
     <!-- Visual Script Editor Overlay -->
     <Transition name="slide-up">
-      <VisualScriptEditor v-if="store.currentView === 'visual-editor'" />
+      <VisualScriptEditor v-if="store.currentView === 'visual-editor'" @close="store.currentView = 'home'" />
     </Transition>
 
-    <!-- Global Toast Notifications -->
     <ToastNotification />
+    <ConfirmDialog />
   </div>
 </template>
 
-<style>
-/* Global Styles */
-:root {
-  --color-bg-primary: #1e1e2e;
-  --color-bg-secondary: #252538;
-  --color-bg-tertiary: #2a2a3c;
-  --color-text-primary: #e0e0e0;
-  --color-text-secondary: #a0a0a0;
-  --color-text-disabled: #5a5a5a;
-  --color-accent: #6366f1;
-  --color-accent-hover: #4f46e5;
-  --color-accent-dim: rgba(99, 102, 241, 0.2);
-  --color-border: #333344;
-  --color-danger: #ef4444;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-hover: rgba(255, 255, 255, 0.05);
-
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  overflow: hidden;
-  user-select: none;
-}
-
-/* App Layout */
-.app {
+<style scoped>
+/* App Container */
+.app-container {
+  display: flex;
   height: 100vh;
+  overflow: hidden;
+  background-color: var(--background);
+  font-family: var(--font-display);
+}
+
+/* Sidebar */
+.sidebar {
+  width: 16rem; /* 256px */
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-main);
+  background-color: var(--surface);
   display: flex;
   flex-direction: column;
-  position: relative;
 }
 
-.main-view {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-/* Header */
-.header {
-  height: 50px;
-  padding: 0 20px;
-  background-color: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-main);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.75rem;
 }
 
-.logo-area {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.logo-container {
+  background-color: var(--primary);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  color: white;
 }
 
 .logo-icon {
-  font-size: 24px;
+  display: block;
+  font-size: 1.5rem;
 }
 
-.title {
-  font-size: 18px;
+.app-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-title {
+  font-size: 1.125rem;
   font-weight: 700;
-  margin: 0;
-  background: linear-gradient(to right, #6366f1, #a855f7);
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  line-height: 1;
 }
 
-.status-bar {
+.app-version {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Navigation Menu */
+.nav-menu {
+  flex: 1;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nav-button {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background-color: var(--color-bg-primary);
-  padding: 4px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--color-text-disabled);
-  transition: background-color 0.3s;
-}
-
-.status-dot.recording {
-  background-color: var(--color-danger);
-  box-shadow: 0 0 8px var(--color-danger);
-}
-
-.status-dot.playing {
-  background-color: var(--color-success);
-  box-shadow: 0 0 8px var(--color-success);
-}
-
-.status-text {
-  font-size: 12px;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  transition: color 150ms, background-color 150ms;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  text-align: left;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  background-color: transparent;
+  color: var(--text-muted);
+}
+
+.nav-button.active {
+  background-color: rgba(19, 91, 236, 0.1);
+  color: var(--primary);
+}
+
+.nav-button.inactive {
+  color: var(--text-muted);
+  background-color: transparent;
+}
+
+.nav-button.inactive:hover {
+  background-color: var(--surface-soft);
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  padding: 1rem;
+  border-top: 1px solid var(--border-main);
+}
+
+.new-script-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--primary);
+  color: white;
+  font-weight: 600;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  transition: background-color 150ms;
+  border: none;
+  cursor: pointer;
+}
+
+.new-script-button:hover {
+  background-color: rgba(19, 91, 236, 0.9);
+}
+
+.new-script-button .material-symbols-outlined {
+  font-size: 1.25rem;
 }
 
 /* Main Content */
 .main-content {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  /* Event List + Settings Panel */
-  gap: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-.panel {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-bg-primary);
-}
-
-.event-panel {
-  border-right: 1px solid var(--color-border);
-}
-
-.settings-panel {
-  background-color: var(--color-bg-secondary);
-}
-
-.panel-header {
-  height: 48px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--color-border);
+/* Header */
+.header {
+  height: 4rem;
+  border-bottom: 1px solid var(--border-main);
+  background-color: var(--surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--color-bg-tertiary);
+  padding: 0 2rem;
 }
 
-.panel-header h2 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.panel-actions {
+.header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.event-count,
-.duration {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  font-family: monospace;
-  background: var(--color-bg-primary);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.panel-body {
+  gap: 1.5rem;
   flex: 1;
-  overflow: hidden;
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.search-wrapper {
   position: relative;
+  width: 100%;
+  max-width: 28rem;
 }
 
-.btn-icon {
-  background: none;
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 1.25rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.5rem 1rem 0.5rem 2.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-main);
+  background-color: var(--surface-soft);
+  font-size: 0.875rem;
+}
+
+.search-input:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: var(--primary);
+  border-color: transparent;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Status Indicator */
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--surface-soft);
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-main);
+}
+
+.status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+
+.status-dot.recording {
+  background-color: var(--error);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.status-dot.playing {
+  background-color: var(--success);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.status-dot.idle {
+  background-color: rgba(100, 116, 139, 0.4);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-text {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Notification Button */
+.notification-button {
+  padding: 0.5rem;
+  color: var(--text-muted);
+  border-radius: 0.5rem;
+  position: relative;
   border: none;
-  color: var(--color-text-secondary);
+  background: transparent;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.btn-icon:hover {
-  background-color: var(--color-hover);
-  color: var(--color-text-primary);
+.notification-button:hover {
+  background-color: var(--surface-soft);
 }
 
-/* Footer */
-.footer {
-  height: 32px;
-  background-color: var(--color-bg-tertiary);
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 20px;
+.notification-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: var(--error);
+  border-radius: 9999px;
+  border: 2px solid white;
 }
 
-.shortcuts {
-  display: flex;
-  gap: 24px;
-  font-size: 12px;
-  color: var(--color-text-secondary);
+:root.dark .notification-badge {
+  border-color: #0f172a;
 }
 
-.shortcut strong {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-primary);
-  padding: 1px 5px;
-  border-radius: 3px;
-  border: 1px solid var(--color-border);
-  font-family: monospace;
-  margin-right: 4px;
+/* Content Area */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* Logs Placeholder */
+.logs-placeholder {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted);
 }
 
 /* Transitions */
 .slide-up-enter-active,
 .slide-up-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
 }
 
 .slide-up-enter-from,

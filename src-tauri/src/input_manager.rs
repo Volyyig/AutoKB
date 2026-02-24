@@ -95,17 +95,40 @@ pub fn on_playback_finish() {
 }
 
 fn handle_event(event: Event, _manager: &InputManager) {
-    // 1. Hotkeys are now handled by tauri-plugin-global-shortcut in lib.rs
-    // This removes hotkey-related keys from this low-level listener to avoid conflicts
+    // 1. Handle Global Hotkeys (Emergency Stop)
     let hotkey_state = crate::hotkey::get_state();
-    if let EventType::KeyPress(key) | EventType::KeyRelease(key) = event.event_type {
-        if hotkey_state.get_all_keys().contains(&key) {
-            return;
+    if let EventType::KeyPress(key) = event.event_type {
+        if key == hotkey_state.get_stop_key() {
+            if player::is_playing() {
+                player::stop_playback();
+                let _ = _manager.app_handle.lock().as_ref().map(|app| {
+                    let _ = app.get_webview_window("main").map(|w| {
+                        let _ = w.show();
+                        let _ = w.set_focus();
+                    });
+                });
+
+                emit_event(
+                    "hotkey-event",
+                    crate::hotkey::HotkeyEvent {
+                        action: "emergency-stop".to_string(),
+                        recording: recorder::is_recording(),
+                        playing: false,
+                    },
+                );
+                return;
+            }
         }
     }
 
-    // 2. Playback Protection
+    // 2. Playback Protection (Skip normal event processing if playing)
     if player::is_playing() {
+        // Still check for task-specific stop keys via TaskState
+        if let EventType::KeyPress(key) = event.event_type {
+            if macro_trigger::get_state().check_key_event(&KeyboardKey::from(key)) {
+                return;
+            }
+        }
         return;
     }
 
@@ -152,22 +175,10 @@ fn handle_event(event: Event, _manager: &InputManager) {
         }
     }
 
-    // 4. Handle Macros
+    // 4. Handle Tasks (Triggers)
     if macro_trigger::get_state().is_active() && !recorder::is_recording() {
-        match event.event_type {
-            EventType::KeyPress(key) => {
-                let trigger = crate::script::MacroTrigger::KeyPress {
-                    key: KeyboardKey::from(key),
-                };
-                macro_trigger::get_state().check_and_execute(&trigger);
-            }
-            EventType::ButtonPress(button) => {
-                let trigger = crate::script::MacroTrigger::MousePress {
-                    button: MouseButton::from(button),
-                };
-                macro_trigger::get_state().check_and_execute(&trigger);
-            }
-            _ => {}
+        if let EventType::KeyPress(key) = event.event_type {
+            macro_trigger::get_state().check_key_event(&KeyboardKey::from(key));
         }
     }
 }

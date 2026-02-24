@@ -1,251 +1,236 @@
 <template>
-    <div class="visual-editor">
-        <!-- Header -->
-        <div class="editor-header">
-            <button class="btn-back" @click="store.currentView = 'home'">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="19" y1="12" x2="5" y2="12"></line>
-                    <polyline points="12 19 5 12 12 5"></polyline>
-                </svg>
-                返回
+  <div class="visual-editor">
+    <!-- Top Navigation Bar -->
+    <header class="editor-header">
+      <div class="header-left">
+        <button @click="$emit('close')" class="back-button">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <div class="header-title">
+          <span class="material-symbols-outlined title-icon">auto_fix_high</span>
+          <h2 class="title-text">AutoFlow <span class="title-subtitle">脚本编辑器</span>
+          </h2>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="action-group">
+          <button @click="loadCurrentRecording" :disabled="!store.hasEvents" class="action-button">
+            <span class="material-symbols-outlined icon-sm">history</span> 导入录制
+          </button>
+          <button @click="loadIntoPlayback" :disabled="!currentScript" class="action-button">
+            <span class="material-symbols-outlined icon-sm">play_arrow</span> 测试运行
+          </button>
+        </div>
+        <button @click="saveChanges" :disabled="!currentScript" class="save-button">
+          <span class="material-symbols-outlined icon-sm">save</span> {{ currentScriptPath ? '保存修改' : '保存为新脚本' }}
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+      <!-- Sidebar: Library & Saved Scripts -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-title-row">
+            <h3 class="sidebar-title">已存脚本</h3>
+            <button @click="addNewScript" class="add-script-button">
+              <span class="material-symbols-outlined icon-sm">add</span>
             </button>
-            <h2>脚本编辑器</h2>
-            <div class="header-actions">
-                <!-- Placeholder for potentially other actions -->
-            </div>
+          </div>
+          <div class="search-container">
+            <span class="material-symbols-outlined search-icon">search</span>
+            <input class="search-input" placeholder="搜索脚本..." type="text" />
+          </div>
         </div>
-
-        <div class="editor-body">
-            <!-- Left Sidebar: Script List -->
-            <div class="sidebar">
-                <div class="sidebar-header">
-                    <h3>脚本列表</h3>
-                    <div class="sidebar-actions">
-                        <button class="btn-icon small" @click="loadCurrentRecording" title="编辑当前录制"
-                            :disabled="!store.hasEvents">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="M12 8v8"></path>
-                                <path d="M8 12h8"></path>
-                            </svg>
-                        </button>
-                        <button class="btn-icon small" @click="addNewScript" title="新建脚本">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                        </button>
-                        <button class="btn-icon small" @click="refreshScripts" title="刷新列表">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M23 4v6h-6"></path>
-                                <path d="M1 20v-6h6"></path>
-                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="script-list">
-                    <div v-if="store.savedScripts.length === 0" class="empty-list">
-                        未找到脚本。
-                    </div>
-                    <div v-for="script in store.savedScripts" :key="script.path" class="script-item"
-                        :class="{ active: currentScriptPath === script.path }" @click="loadScriptForEdit(script.path)">
-                        <span class="script-name">{{ script.name }}</span>
-                        <button class="btn-delete-script" @click.stop="deleteScript(script.path)"
-                            title="删除脚本">🗑️</button>
-                    </div>
-                </div>
+        <div class="script-list">
+          <div v-for="script in store.savedScripts" :key="script.path" @click="loadScriptForEdit(script.path)"
+            :class="['script-item', currentScriptPath === script.path ? 'active' : 'inactive']">
+            <div class="script-info">
+              <span class="material-symbols-outlined script-icon">description</span>
+              <span class="script-name">{{ script.name }}</span>
             </div>
-
-            <!-- Right Content: Editor -->
-            <div class="main-editor">
-                <div v-if="!currentScript" class="empty-state">
-                    请从列表中选择要编辑的脚本。
-                </div>
-                <template v-else>
-                    <div class="toolbar">
-                        <div class="script-info">
-                            <input v-model="currentScript.name" class="script-name-input" placeholder="脚本名称" />
-                            <span class="event-count">{{ currentScript.events.length }} 个事件</span>
-                        </div>
-                        <div class="toolbar-actions">
-                            <div class="add-event-dropdown">
-                                <button class="btn btn-secondary" @click="showAddMenu = !showAddMenu">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
-                                    添加事件
-                                </button>
-                                <div v-if="showAddMenu" class="dropdown-menu">
-                                    <button @click="addEventTemplate('Delay')">⌛ 等待时间</button>
-                                    <button @click="addEventTemplate('KeyPress')">⌨️ 键盘按下</button>
-                                    <button @click="addEventTemplate('KeyRelease')">⌨️ 键盘弹起</button>
-                                    <button @click="addEventTemplate('MousePress')">🖱️ 鼠标按下</button>
-                                    <button @click="addEventTemplate('MouseRelease')">🖱️ 鼠标弹起</button>
-                                    <button @click="addEventTemplate('MouseMove')">🎯 鼠标移动</button>
-                                    <button @click="addEventTemplate('MouseScroll')">🎡 鼠标滚动</button>
-                                </div>
-                            </div>
-                            <button class="btn btn-secondary" @click="saveChanges">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                    <polyline points="7 3 7 8 15 8"></polyline>
-                                </svg>
-                                保存
-                            </button>
-                            <button class="btn btn-primary" @click="loadIntoPlayback">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <path d="M5 12h14"></path>
-                                    <path d="M12 5l7 7-7 7"></path>
-                                </svg>
-                                载入
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="events-container">
-                        <div v-if="groups.length === 0" class="no-events">
-                            脚本中没有事件。
-                        </div>
-                        <div v-else class="event-groups">
-                            <div v-for="(group, index) in groups" :key="index" class="event-group"
-                                :class="{ expanded: group.expanded }">
-                                <div class="group-header" @click="toggleGroup(index)">
-                                    <div class="group-icon">
-                                        <span v-if="group.type === 'KeyPress' || group.type === 'KeyRelease'">⌨️</span>
-                                        <span v-else-if="group.type.startsWith('Mouse')">🖱️</span>
-                                        <span v-else>❓</span>
-                                    </div>
-                                    <div class="group-title">
-                                        {{ formatGroupTitle(group.type) }}
-                                        <span class="badge">{{ group.events.length }}</span>
-                                    </div>
-                                    <div class="group-actions" @click.stop>
-                                        <button class="btn-icon small danger" @click="deleteGroup(index)" title="删除组">
-                                            🗑️
-                                        </button>
-                                    </div>
-                                    <div class="group-toggle">
-                                        {{ group.expanded ? '▼' : '▶' }}
-                                    </div>
-                                </div>
-                                <div v-show="group.expanded" class="group-body">
-                                    <div v-for="(event, eIndex) in group.events" :key="eIndex" class="event-item">
-                                        <div class="event-info">
-                                            <span class="event-desc">{{ getEventDescription(event) }}</span>
-                                        </div>
-                                        <div class="event-controls">
-                                            <!-- Delay -->
-                                            <template v-if="event.event_type === 'Delay'">
-                                                <input type="number" v-model.number="event.duration_ms"
-                                                    class="small-input" min="0">
-                                                <span class="unit">ms</span>
-                                            </template>
-
-                                            <!-- Key Events -->
-                                            <template
-                                                v-if="event.event_type === 'KeyPress' || event.event_type === 'KeyRelease'">
-                                                <button class="btn-capture"
-                                                    :class="{ capturing: capturingIndex?.groupIndex === index && capturingIndex?.eventIndex === eIndex }"
-                                                    @click="startCapture(index, eIndex)">
-                                                    {{ capturingIndex?.groupIndex === index &&
-                                                        capturingIndex?.eventIndex === eIndex ? '等待按键...' :
-                                                        getKeyDisplay(event.key) }}
-                                                </button>
-                                            </template>
-
-                                            <!-- Mouse Press/Release -->
-                                            <template
-                                                v-if="event.event_type === 'MousePress' || event.event_type === 'MouseRelease'">
-                                                <select v-model="event.button" class="small-select">
-                                                    <option value="left">左键</option>
-                                                    <option value="right">右键</option>
-                                                    <option value="middle">中键</option>
-                                                </select>
-                                                <span class="label">X:</span>
-                                                <input type="number" v-model.number="event.x" class="small-input coord">
-                                                <span class="label">Y:</span>
-                                                <input type="number" v-model.number="event.y" class="small-input coord">
-                                            </template>
-
-                                            <!-- Mouse Move -->
-                                            <template v-if="event.event_type === 'MouseMove'">
-                                                <span class="label">X:</span>
-                                                <input type="number" v-model.number="event.x" class="small-input coord">
-                                                <span class="label">Y:</span>
-                                                <input type="number" v-model.number="event.y" class="small-input coord">
-                                            </template>
-
-                                            <!-- Mouse Scroll -->
-                                            <template v-if="event.event_type === 'MouseScroll'">
-                                                <span class="label">X:</span>
-                                                <input type="number" v-model.number="event.delta_x"
-                                                    class="small-input coord">
-                                                <span class="label">Y:</span>
-                                                <input type="number" v-model.number="event.delta_y"
-                                                    class="small-input coord">
-                                            </template>
-
-                                            <div class="reorder-btns">
-                                                <button class="btn-reorder" @click="moveEvent(index, eIndex, 'up')"
-                                                    :disabled="index === 0 && eIndex === 0">▲</button>
-                                                <button class="btn-reorder" @click="moveEvent(index, eIndex, 'down')"
-                                                    :disabled="index === groups.length - 1 && eIndex === group.events.length - 1">▼</button>
-                                            </div>
-                                            <div class="insert-btn-container">
-                                                <button class="btn-icon small" @click="toggleInsertMenu(index, eIndex)"
-                                                    title="在此之后插入">
-                                                    ➕
-                                                </button>
-                                                <div v-if="insertMenuIndex?.groupIndex === index && insertMenuIndex?.eventIndex === eIndex"
-                                                    class="dropdown-menu insert-menu">
-                                                    <button
-                                                        @click="addEventTemplate('Delay', group.startIndex + eIndex)">⌛
-                                                        等待</button>
-                                                    <button
-                                                        @click="addEventTemplate('KeyPress', group.startIndex + eIndex)">⌨️
-                                                        按下</button>
-                                                    <button
-                                                        @click="addEventTemplate('KeyRelease', group.startIndex + eIndex)">⌨️
-                                                        弹起</button>
-                                                    <button
-                                                        @click="addEventTemplate('MousePress', group.startIndex + eIndex)">🖱️
-                                                        按下</button>
-                                                    <button
-                                                        @click="addEventTemplate('MouseRelease', group.startIndex + eIndex)">🖱️
-                                                        弹起</button>
-                                                    <button
-                                                        @click="addEventTemplate('MouseMove', group.startIndex + eIndex)">🎯
-                                                        移动</button>
-                                                </div>
-                                            </div>
-                                            <button class="btn-icon small danger"
-                                                @click="deleteEvent(index, eIndex)">✕</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
+            <button @click.stop="deleteScript(script.path)" class="delete-script-button">
+              <span class="material-symbols-outlined icon-sm">delete</span>
+            </button>
+          </div>
+          <div v-if="store.savedScripts.length === 0" class="empty-state">
+            暂无已保存脚本
+          </div>
         </div>
-    </div>
+      </aside>
+
+      <!-- Editor Content -->
+      <section class="editor-content">
+        <div v-if="!currentScript" class="empty-editor">
+          <span class="material-symbols-outlined empty-icon">edit_square</span>
+          <p>请选择脚本进行编辑或新建</p>
+        </div>
+        <template v-else>
+          <!-- Canvas Toolbar (Simplified) -->
+          <div class="canvas-toolbar">
+            <div class="toolbar-info">
+              <input v-model="currentScript.name" class="script-name-input" placeholder="脚本名称..." />
+              <div class="toolbar-divider"></div>
+              <span class="node-count">{{ currentScript.events.length }} 个节点</span>
+            </div>
+            <div class="add-menu-container">
+              <button @click="showAddMenu = !showAddMenu" class="add-button">
+                <span class="material-symbols-outlined">add_circle</span>
+              </button>
+              <div v-if="showAddMenu" class="add-menu">
+                <button v-for="t in ['Delay', 'KeyPress', 'KeyRelease', 'MousePress', 'MouseRelease', 'MouseMove']"
+                  :key="t" @click="addEventTemplate(t)" class="add-menu-item">
+                  <span class="material-symbols-outlined menu-item-icon">{{ getIconForType(t) }}</span>
+                  {{ formatGroupTitle(t) }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Canvas Content: List of Event Groups -->
+          <div class="canvas-content canvas-grid">
+            <div class="canvas-inner">
+              <!-- Start Node -->
+              <div class="start-node-container">
+                <div class="start-node">
+                  <span class="material-symbols-outlined start-node-icon">play_circle</span>
+                  <span class="start-node-text">流程开始</span>
+                </div>
+                <div class="connector"></div>
+              </div>
+
+              <!-- Event Groups -->
+              <div v-for="(group, index) in groups" :key="index" class="event-group-container">
+                <div @click="toggleGroup(index)" :class="['event-group', group.expanded ? 'expanded' : '']">
+                  <!-- Group Header -->
+                  <div class="group-header">
+                    <div class="group-header-left">
+                      <span class="material-symbols-outlined group-icon">{{ getIconForType(group.type) }}</span>
+                      <div class="group-info">
+                        <div class="group-title-row">
+                          <span class="group-title">{{ formatGroupTitle(group.type) }}</span>
+                          <span class="group-badge">{{ group.events.length }} 步骤</span>
+                        </div>
+                        <p class="group-description">连续执行 {{ group.events.length }} 个同类动作</p>
+                      </div>
+                    </div>
+                    <div class="group-header-right">
+                      <button @click.stop="deleteGroup(index)" class="delete-group-button">
+                        <span class="material-symbols-outlined icon-lg">delete</span>
+                      </button>
+                      <span class="material-symbols-outlined expand-icon" :class="{ 'rotated': group.expanded }">expand_more</span>
+                    </div>
+                  </div>
+
+                  <!-- Group Details -->
+                  <div v-if="group.expanded" @click.stop class="group-details">
+                    <div v-for="(event, eIndex) in (group.events as any[])" :key="eIndex" class="event-item">
+                      <div class="event-item-left">
+                        <span class="event-index">{{ eIndex + 1 }}</span>
+                        <!-- Custom settings per event type -->
+                        <div class="event-controls">
+                          <template v-if="event.event_type === 'Delay'">
+                            <input type="number" v-model.number="event.duration_ms" class="event-input event-input-small" min="0">
+                            <span class="event-label">ms</span>
+                          </template>
+                          <template v-else-if="event.event_type === 'KeyPress' || event.event_type === 'KeyRelease'">
+                            <button @click="startCapture(index, eIndex)"
+                              :class="['capture-button', capturingIndex?.groupIndex === index && capturingIndex?.eventIndex === eIndex ? 'capturing' : '']">
+                              {{ capturingIndex?.groupIndex === index && capturingIndex?.eventIndex === eIndex ?
+                                '等待输入...' : getKeyDisplay(event.key) }}
+                            </button>
+                          </template>
+                          <template v-else-if="event.event_type.startsWith('Mouse')">
+                            <span class="event-label">X:</span>
+                            <input type="number" v-model.number="event.x" class="event-input event-input-tiny" />
+                            <span class="event-label">Y:</span>
+                            <input type="number" v-model.number="event.y" class="event-input event-input-tiny" />
+                          </template>
+                        </div>
+                        <span class="event-description">{{ getEventDescription(event) }}</span>
+                      </div>
+                      <button @click.stop="deleteEvent(index, eIndex)" class="delete-event-button">
+                        <span class="material-symbols-outlined icon-sm">close</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <!-- Connector arrow (if not last) -->
+                <div v-if="index < groups.length - 1" class="connector-small"></div>
+              </div>
+
+              <!-- End Node -->
+              <div class="end-node-container">
+                <div class="connector-small"></div>
+                <div class="end-node">
+                  <span class="material-symbols-outlined end-node-icon">logout</span>
+                  <span class="end-node-text">结束</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Breadcrumbs -->
+        <div class="breadcrumbs">
+          <span>工作流库</span>
+          <span class="material-symbols-outlined breadcrumb-separator">chevron_right</span>
+          <span class="breadcrumb-active">{{ currentScript?.name || '新脚本' }}</span>
+        </div>
+      </section>
+
+      <!-- Right Sidebar: Properties Configuration (ParamEditor integrated) -->
+      <aside v-if="currentScript" class="properties-sidebar">
+        <div class="properties-header">
+          <h3 class="properties-title">全局属性</h3>
+          <span class="properties-badge">Script Config</span>
+        </div>
+        <div class="properties-content">
+          <div class="property-section">
+            <label class="property-label">脚本描述</label>
+            <textarea v-model="currentScript.description" class="property-textarea" placeholder="简述该流程的作用..."></textarea>
+          </div>
+
+          <div class="property-section">
+            <label class="property-label">执行模式</label>
+            <div class="execution-mode-section">
+              <div class="slider-container">
+                <div class="slider-header">
+                  <span class="slider-label">执行速度</span>
+                  <span class="slider-value">{{ currentScript.speed_multiplier }}x</span>
+                </div>
+                <input type="range" v-model.number="currentScript.speed_multiplier" min="0.1" max="5.0" step="0.1"
+                  class="slider-input" />
+              </div>
+              <div class="number-input-row">
+                <span class="number-input-label">循环次数 (0=无限)</span>
+                <input type="number" v-model.number="currentScript.loop_config.count" class="number-input" />
+              </div>
+              <div class="number-input-row">
+                <span class="number-input-label">循环间隔 (ms)</span>
+                <input type="number" v-model.number="currentScript.loop_config.delay_between_ms" class="number-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <div class="info-box-content">
+              <span class="material-symbols-outlined info-icon">lightbulb</span>
+              <div class="info-text">
+                编辑器会自动将连续的同类动作（如多个按键）折叠为组，以保持流程整洁度。
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="properties-footer">
+          <button @click="clearEvents" class="clear-button">
+            清空所有节点
+          </button>
+        </div>
+      </aside>
+    </main>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -256,791 +241,1210 @@ import { save } from '@tauri-apps/plugin-dialog';
 import type { Script } from '../types/script';
 import { getEventDescription, getKeyDisplay } from '../types/script';
 import { groupEvents, formatGroupTitle, type EventGroup } from '../utils/eventGrouping';
+import { useConfirmDialog } from '../composables/useConfirmDialog';
 
 const store = useScriptStore();
+const { confirm } = useConfirmDialog();
 const currentScriptPath = ref<string | null>(null);
 const currentScript = ref<Script | null>(null);
 const groups = ref<EventGroup[]>([]);
 const showAddMenu = ref(false);
-const insertMenuIndex = ref<{ groupIndex: number, eventIndex: number } | null>(null);
 const capturingIndex = ref<{ groupIndex: number, eventIndex: number } | null>(null);
 
-// Watch currentScript and build `groups` ref
+defineEmits(['close']);
+
 // Watch currentScript and build `groups` ref
 watch(() => currentScript.value, (newScript) => {
-    if (!newScript) {
-        groups.value = [];
-        return;
+  if (!newScript) {
+    groups.value = [];
+    return;
+  }
+  const expandedStates = groups.value.map(g => g.expanded);
+  const newGroups = groupEvents(newScript.events);
+  newGroups.forEach((group, i) => {
+    if (expandedStates[i] !== undefined) {
+      group.expanded = expandedStates[i];
+    } else {
+      group.expanded = true; // Default to expanded for visibility
     }
-
-    // Capture existing expanded states by index
-    const expandedStates = groups.value.map(g => g.expanded);
-
-    // Recreate groups
-    const newGroups = groupEvents(newScript.events);
-
-    // Restore expanded states where possible
-    newGroups.forEach((group, i) => {
-        if (expandedStates[i]) {
-            group.expanded = true;
-        }
-    });
-
-    groups.value = newGroups;
+  });
+  groups.value = newGroups;
 }, { deep: true, immediate: true });
 
 function toggleGroup(index: number) {
-    if (groups.value[index]) {
-        groups.value[index].expanded = !groups.value[index].expanded;
-    }
+  if (groups.value[index]) {
+    groups.value[index].expanded = !groups.value[index].expanded;
+  }
+}
+
+function getIconForType(type: string) {
+  const map: Record<string, string> = {
+    'Delay': 'timer',
+    'KeyPress': 'keyboard',
+    'KeyRelease': 'keyboard',
+    'MousePress': 'mouse',
+    'MouseRelease': 'mouse',
+    'MouseMove': 'near_me',
+    'MouseScroll': 'expand',
+  };
+  return map[type] || 'settings';
 }
 
 // --- Editing Functions ---
 
 async function deleteScript(path: string) {
-    if (!confirm(`确定要彻底删除脚本吗？`)) return;
-    try {
-        await invoke('delete_script', { path });
-        if (currentScriptPath.value === path) {
-            currentScript.value = null;
-            currentScriptPath.value = null;
-        }
-        await store.listSavedScripts();
-        store.showNotification('删除成功。', 'success');
-    } catch (e) {
-        store.showNotification('删除失败: ' + e, 'error');
+  const confirmed = await confirm({
+    title: '删除脚本',
+    message: '确定要彻底删除此脚本吗？此操作无法撤销。',
+    confirmText: '删除',
+    cancelText: '取消'
+  });
+  
+  if (!confirmed) return;
+  
+  try {
+    await invoke('delete_script', { path });
+    if (currentScriptPath.value === path) {
+      currentScript.value = null;
+      currentScriptPath.value = null;
     }
+    await store.listSavedScripts();
+    store.showNotification('删除成功。', 'success');
+  } catch (e) {
+    store.showNotification('删除失败: ' + e, 'error');
+  }
 }
 
 function loadCurrentRecording() {
-    currentScript.value = JSON.parse(JSON.stringify(store.currentScript));
-    currentScriptPath.value = null;
-    store.showNotification('已加载当前录制以供编辑。', 'info');
+  currentScript.value = JSON.parse(JSON.stringify(store.currentScript));
+  currentScriptPath.value = null;
+  store.showNotification('已加载当前录制。', 'info');
 }
 
 function addNewScript() {
-    const newScript = store.createNewDraftScript();
-    currentScript.value = newScript;
-    currentScriptPath.value = null; // New script hasn't been saved yet
-    store.showNotification('已创建新脚本，请在保存时指定路径。', 'info');
+  currentScript.value = store.createNewDraftScript();
+  currentScriptPath.value = null;
+  store.showNotification('已创建新脚本载入。', 'info');
 }
 
-function toggleInsertMenu(groupIndex: number, eventIndex: number) {
-    if (insertMenuIndex.value?.groupIndex === groupIndex && insertMenuIndex.value?.eventIndex === eventIndex) {
-        insertMenuIndex.value = null;
-    } else {
-        insertMenuIndex.value = { groupIndex, eventIndex };
-    }
-}
-
-function addEventTemplate(type: string, insertAfterIndex?: number) {
-    if (!currentScript.value) return;
-
-    let event: any = { event_type: type };
-
-    switch (type) {
-        case 'Delay':
-            event.duration_ms = 100;
-            break;
-        case 'KeyPress':
-        case 'KeyRelease':
-            event.key = { type: 'Char', value: 'a' };
-            break;
-        case 'MousePress':
-        case 'MouseRelease':
-            event.button = 'left';
-            event.x = 0;
-            event.y = 0;
-            break;
-        case 'MouseMove':
-            event.x = 0;
-            event.y = 0;
-            break;
-        case 'MouseScroll':
-            event.delta_x = 0;
-            event.delta_y = 0;
-            break;
-    }
-
-    if (typeof insertAfterIndex === 'number') {
-        currentScript.value.events.splice(insertAfterIndex + 1, 0, event);
-        insertMenuIndex.value = null;
-    } else {
-        currentScript.value.events.push(event);
-        showAddMenu.value = false;
-    }
-
-    // Expand the group if we just added to it
-    setTimeout(() => {
-        // Find the group that contains this event
-        // (Just expanding all for simplicity in this case)
-        groups.value.forEach(g => { g.expanded = true; });
-    }, 0);
-}
-
-function moveEvent(groupIndex: number, eventIndex: number, direction: 'up' | 'down') {
-    if (!currentScript.value) return;
-    const group = groups.value[groupIndex];
-    const realIndex = group.startIndex + eventIndex;
-    const targetIndex = direction === 'up' ? realIndex - 1 : realIndex + 1;
-
-    if (targetIndex < 0 || targetIndex >= currentScript.value.events.length) return;
-
-    const [event] = currentScript.value.events.splice(realIndex, 1);
-    currentScript.value.events.splice(targetIndex, 0, event);
+function addEventTemplate(type: string) {
+  if (!currentScript.value) return;
+  let event: any = { event_type: type };
+  switch (type) {
+    case 'Delay': event.duration_ms = 100; break;
+    case 'KeyPress':
+    case 'KeyRelease': event.key = { type: 'Char', value: 'a' }; break;
+    case 'MousePress':
+    case 'MouseRelease':
+      event.button = 'left'; event.x = 0; event.y = 0; break;
+    case 'MouseMove': event.x = 0; event.y = 0; break;
+    case 'MouseScroll': event.delta_x = 0; event.delta_y = 100; break;
+  }
+  currentScript.value.events.push(event);
+  showAddMenu.value = false;
 }
 
 function startCapture(groupIndex: number, eventIndex: number) {
-    capturingIndex.value = { groupIndex, eventIndex };
-    window.addEventListener('keydown', onCaptureKeyDown, { once: true });
+  capturingIndex.value = { groupIndex, eventIndex };
+  window.addEventListener('keydown', onCaptureKeyDown, { once: true });
 }
 
 function onCaptureKeyDown(e: KeyboardEvent) {
-    if (!capturingIndex.value || !currentScript.value) return;
-
-    // Check if still in editor view. If not, don't do anything.
-    if (store.currentView !== 'visual-editor') {
-        capturingIndex.value = null;
-        return;
-    }
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    const { groupIndex, eventIndex } = capturingIndex.value;
-
-    // Find event again because groups might have changed if we are reactive, 
-    // but here we use a simple stable index approach.
-    const group = groups.value[groupIndex];
-    if (!group) {
-        capturingIndex.value = null;
-        return;
-    }
+  if (!capturingIndex.value || !currentScript.value) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const { groupIndex, eventIndex } = capturingIndex.value;
+  const group = groups.value[groupIndex];
+  if (group) {
     const realIndex = group.startIndex + eventIndex;
     const event = currentScript.value.events[realIndex];
-
     if (event && (event.event_type === 'KeyPress' || event.event_type === 'KeyRelease')) {
-        if (e.key.length === 1) {
-            event.key = { type: 'Char', value: e.key };
-        } else {
-            // Map special keys
-            let keyName = e.key;
-            const keyMap: Record<string, string> = {
-                ' ': 'Space',
-                'Control': 'ControlLeft',
-                'Shift': 'ShiftLeft',
-                'Alt': 'Alt',
-                'Meta': 'MetaLeft',
-                'ArrowUp': 'UpArrow',
-                'ArrowDown': 'DownArrow',
-                'ArrowLeft': 'LeftArrow',
-                'ArrowRight': 'RightArrow',
-                'Enter': 'Return',
-                'Backspace': 'Backspace',
-                'Escape': 'Escape',
-                'Tab': 'Tab',
-                'CapsLock': 'CapsLock',
-                'Delete': 'Delete',
-                'End': 'End',
-                'Home': 'Home',
-                'PageUp': 'PageUp',
-                'PageDown': 'PageDown'
-            };
-            if (keyMap[keyName]) keyName = keyMap[keyName];
-            event.key = { type: 'Special', value: keyName };
-        }
+      if (e.key.length === 1) {
+        event.key = { type: 'Char', value: e.key };
+      } else {
+        let keyName = e.key;
+        const keyMap: Record<string, string> = {
+          ' ': 'Space', 'Control': 'ControlLeft', 'Shift': 'ShiftLeft', 'Alt': 'Alt',
+          'Meta': 'MetaLeft', 'ArrowUp': 'UpArrow', 'ArrowDown': 'DownArrow',
+          'ArrowLeft': 'LeftArrow', 'ArrowRight': 'RightArrow', 'Enter': 'Return',
+          'Backspace': 'Backspace', 'Escape': 'Escape', 'Tab': 'Tab'
+        };
+        if (keyMap[keyName]) keyName = keyMap[keyName];
+        event.key = { type: 'Special', value: keyName };
+      }
     }
-
-    capturingIndex.value = null;
+  }
+  capturingIndex.value = null;
 }
 
 function deleteEvent(groupIndex: number, eventIndex: number) {
-    if (!currentScript.value) return;
-
-    const group = groups.value[groupIndex];
-    const realIndex = group.startIndex + eventIndex;
-
-    currentScript.value.events.splice(realIndex, 1);
+  if (!currentScript.value) return;
+  const group = groups.value[groupIndex];
+  currentScript.value.events.splice(group.startIndex + eventIndex, 1);
 }
 
-function deleteGroup(groupIndex: number) {
-    if (!currentScript.value) return;
-    if (!confirm('确定要删除整个事件组吗？')) return;
-
-    const group = groups.value[groupIndex];
-    currentScript.value.events.splice(group.startIndex, group.events.length);
+async function deleteGroup(groupIndex: number) {
+  if (!currentScript.value) return;
+  
+  const confirmed = await confirm({
+    title: '删除事件组',
+    message: '确定要删除整个事件组吗？此操作无法撤销。',
+    confirmText: '删除',
+    cancelText: '取消'
+  });
+  
+  if (!confirmed) return;
+  
+  const group = groups.value[groupIndex];
+  currentScript.value.events.splice(group.startIndex, group.events.length);
 }
 
-
-// ---
+async function clearEvents() {
+  if (currentScript.value) {
+    const confirmed = await confirm({
+      title: '清空所有节点',
+      message: '确定要清空所有节点吗？此操作无法撤销。',
+      confirmText: '清空',
+      cancelText: '取消'
+    });
+    
+    if (confirmed) {
+      currentScript.value.events = [];
+    }
+  }
+}
 
 async function refreshScripts() {
-    await store.listSavedScripts();
+  await store.listSavedScripts();
 }
 
 async function loadScriptForEdit(path: string) {
-    try {
-        const script = await invoke<Script>('load_script', { path });
-        currentScript.value = script;
-        currentScriptPath.value = path;
-    } catch (e) {
-        console.error("Failed to load script", e);
-    }
+  try {
+    const script = await invoke<Script>('load_script', { path });
+    currentScript.value = script;
+    currentScriptPath.value = path;
+  } catch (e) {
+    console.error("Failed to load script", e);
+  }
 }
 
 async function saveChanges() {
-    if (!currentScript.value) return;
-
-    try {
-        let path = currentScriptPath.value;
-
-        // If it's a new script, ask for path
-        if (!path) {
-            const defaultDir = await invoke<string>('get_scripts_dir');
-            const savePath = await save({
-                defaultPath: `${defaultDir}/${currentScript.value.name}.autokb`,
-                filters: [{ name: 'AutoKB Script', extensions: ['autokb'] }],
-            });
-            if (!savePath) return; // User cancelled
-            path = savePath;
-            currentScriptPath.value = path;
-        }
-
-        await invoke('save_script', { script: currentScript.value, path });
-        store.showNotification('保存成功！', 'success');
-        await store.listSavedScripts(); // Refresh list
-    } catch (e) {
-        store.showNotification('保存失败: ' + e, 'error');
+  if (!currentScript.value) return;
+  try {
+    let path = currentScriptPath.value;
+    if (!path) {
+      const defaultDir = await invoke<string>('get_scripts_dir');
+      const savePath = await save({
+        defaultPath: `${defaultDir}/${currentScript.value.name}.autokb`,
+        filters: [{ name: 'AutoKB Script', extensions: ['autokb'] }],
+      });
+      if (!savePath) return;
+      path = savePath;
+      currentScriptPath.value = path;
     }
+    await invoke('save_script', { script: currentScript.value, path });
+    store.showNotification('保存成功！', 'success');
+    await store.listSavedScripts();
+  } catch (e) {
+    store.showNotification('保存失败: ' + e, 'error');
+  }
 }
 
 async function loadIntoPlayback() {
-    if (!currentScript.value) return;
-    store.currentScript = JSON.parse(JSON.stringify(currentScript.value));
-    store.statusMessage = `已加载 ${currentScript.value.name}`;
-    store.currentView = 'home';
-    store.showNotification(`已加载 ${currentScript.value.name} 以供回放。`, 'info');
+  if (!currentScript.value) return;
+  store.currentScript = JSON.parse(JSON.stringify(currentScript.value));
+  store.statusMessage = `已载入 ${currentScript.value.name}`;
+  store.showNotification(`已载入脚本。`, 'info');
 }
 
-onMounted(() => {
-    refreshScripts();
-});
+onMounted(() => refreshScripts());
 </script>
 
 <style scoped>
+/* Editor Container */
 .visual-editor {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: var(--color-bg-primary);
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background-color: var(--background);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  height: 100vh;
 }
 
+/* Header */
 .editor-header {
-    height: 60px;
-    border-bottom: 1px solid var(--color-border);
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-    background-color: var(--color-bg-secondary);
-    justify-content: space-between;
+  display: flex;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-main);
+  background-color: var(--surface);
+  padding: 0 1rem;
+  flex-shrink: 0;
+  z-index: 50;
 }
 
-.editor-header h2 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--color-text-primary);
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
-.btn-back {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: none;
-    border: none;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    font-size: 14px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    transition: background 0.2s;
+.back-button {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  transition: background-color 150ms;
 }
 
-.btn-back:hover {
-    background-color: var(--color-hover);
-    color: var(--color-text-primary);
+.back-button:hover {
+  background-color: var(--surface-soft);
 }
 
-.editor-body {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
+.title-icon {
+  color: var(--primary);
+  font-size: 1.875rem;
+}
+
+.title-text {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.title-subtitle {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.action-group {
+  display: flex;
+  background-color: var(--surface-soft);
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  margin-right: 0.5rem;
+  border: 1px solid var(--border-main);
+  gap: 1rem
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 150ms;
+}
+
+.action-button:hover {
+  background-color: var(--surface);
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: background-color 150ms;
+  box-shadow: 0 1px 2px 0 rgba(19, 91, 236, 0.2);
+}
+
+.save-button:hover {
+  background-color: rgba(19, 91, 236, 0.9);
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Main Workspace */
+.main-workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Sidebar */
 .sidebar {
-    width: 250px;
-    background-color: var(--color-bg-secondary);
-    border-right: 1px solid var(--color-border);
-    display: flex;
-    flex-direction: column;
+  width: 16rem;
+  border-right: 1px solid var(--border-main);
+  background-color: var(--surface);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
-    padding: 15px;
-    border-bottom: 1px solid var(--color-border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-main);
 }
 
-.sidebar-actions {
-    display: flex;
-    gap: 8px;
+.sidebar-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
 }
 
-.sidebar-header h3 {
-    margin: 0;
-    font-size: 14px;
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
+.sidebar-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.add-script-button {
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  color: var(--primary);
+}
+
+.add-script-button:hover {
+  background-color: var(--surface-soft);
+}
+
+.search-container {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 1.125rem;
+}
+
+.search-input {
+  width: 100%;
+  padding-left: 2.5rem;
+  padding-right: 1rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  background-color: var(--surface-soft);
+  border: 1px solid var(--border-main);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.search-input:focus {
+  outline: 2px solid rgba(19, 91, 236, 0.2);
+  outline-offset: 0;
 }
 
 .script-list {
-    flex: 1;
-    overflow-y: auto;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .script-item {
-    padding: 12px 15px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--color-border);
-    transition: background 0.2s;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.btn-delete-script {
-    background: none;
-    border: none;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.script-item:hover .btn-delete-script {
-    opacity: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 150ms;
 }
 
 .script-item:hover {
-    background-color: var(--color-hover);
+  background-color: var(--surface-soft);
 }
 
 .script-item.active {
-    background-color: var(--color-bg-tertiary);
-    border-left: 3px solid var(--color-accent);
+  background-color: rgba(19, 91, 236, 0.05);
+  color: var(--primary);
 }
 
-.script-name {
-    font-size: 14px;
-    color: var(--color-text-primary);
-}
-
-.main-editor {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--color-bg-primary);
-}
-
-.empty-state {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-text-disabled);
-}
-
-.toolbar {
-    height: 60px;
-    border-bottom: 1px solid var(--color-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    background-color: var(--color-bg-tertiary);
-}
-
-.script-name-input {
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-primary);
-    font-size: 16px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 4px;
-    width: 200px;
-}
-
-.script-name-input:focus {
-    outline: none;
-    border-color: var(--color-accent);
+.script-item.inactive {
+  color: var(--text-muted);
 }
 
 .script-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
 }
 
-.event-count {
-    font-size: 11px;
-    color: var(--color-text-secondary);
+.script-icon {
+  font-size: 1.125rem;
+  opacity: 0.6;
 }
 
-.toolbar-actions {
-    display: flex;
-    gap: 10px;
+.script-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    cursor: pointer;
-    border: 1px solid transparent;
+.delete-script-button {
+  padding: 0.25rem;
+  opacity: 0;
+  border-radius: 0.25rem;
+  color: var(--error);
+  transition: all 150ms;
 }
 
-.btn-primary {
-    background-color: var(--color-accent);
-    color: white;
+.script-item:hover .delete-script-button {
+  opacity: 1;
 }
 
-.btn-secondary {
-    background-color: var(--color-bg-primary);
-    border-color: var(--color-border);
-    color: var(--color-text-primary);
+.delete-script-button:hover {
+  background-color: var(--error-bg);
 }
 
-/* Dropdown */
-.add-event-dropdown {
-    position: relative;
+.empty-state {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
-.dropdown-menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 5px;
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    box-shadow: var(--shadow-md);
-    z-index: 1100;
-    width: 150px;
-    display: flex;
-    flex-direction: column;
-    padding: 4px;
+/* Editor Content */
+.editor-content {
+  flex: 1;
+  background-color: var(--background);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.dropdown-menu button {
-    background: none;
-    border: none;
-    color: var(--color-text-primary);
-    text-align: left;
-    padding: 8px 12px;
-    font-size: 13px;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background 0.2s;
+.empty-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.6;
 }
 
-.dropdown-menu button:hover {
-    background-color: var(--color-accent-dim);
+.empty-icon {
+  font-size: 3.75rem;
+  margin-bottom: 1rem;
 }
 
-.events-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
+/* Canvas Toolbar */
+.canvas-toolbar {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--surface);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-main);
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  z-index: 20;
+}
+
+.toolbar-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.script-name-input {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  width: 8rem;
+  color: var(--text-main);
+}
+
+.script-name-input:focus {
+  outline: none;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 1rem;
+  background-color: var(--border-main);
+  margin: 0 0.25rem;
+}
+
+.node-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.add-menu-container {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.add-button {
+  padding: 0.375rem;
+  border-radius: 9999px;
+  color: var(--primary);
+  transition: background-color 150ms;
+}
+
+.add-button:hover {
+  background-color: var(--surface-soft);
+}
+
+.add-menu {
+  position: absolute;
+  top: 100%;
+  margin-top: 0.5rem;
+  left: 0;
+  width: 12rem;
+  background-color: var(--surface);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-main);
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  z-index: 100;
+}
+
+.add-menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.add-menu-item:hover {
+  background-color: var(--surface-soft);
+}
+
+.menu-item-icon {
+  font-size: 0.875rem;
+  opacity: 0.6;
+}
+
+/* Canvas Content */
+.canvas-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 5rem 1.25rem 4rem;
+  scroll-behavior: smooth;
+}
+
+.canvas-grid {
+  background-size: 20px 20px;
+  background-image: radial-gradient(circle, #e2e8f0 1px, transparent 1px);
+}
+
+.dark .canvas-grid {
+  background-image: radial-gradient(circle, var(--border-main) 1px, transparent 1px);
+}
+
+.canvas-inner {
+  max-width: 36rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* Flow Nodes */
+.start-node-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.start-node {
+  width: 10rem;
+  height: 3.5rem;
+  background-color: var(--surface);
+  border: 2px solid var(--primary);
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.start-node-icon {
+  color: var(--primary);
+  margin-right: 0.5rem;
+}
+
+.start-node-text {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--text-main);
+}
+
+.connector {
+  width: 2px;
+  height: 2rem;
+  background-color: var(--border-main);
+  margin-top: 0.5rem;
+}
+
+.connector-small {
+  width: 2px;
+  height: 2rem;
+  background-color: var(--border-main);
+  margin: 0.25rem 0;
+}
+
+/* Event Groups */
+.event-group-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .event-group {
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    margin-bottom: 8px;
-    overflow: hidden;
+  width: 100%;
+  background-color: var(--surface);
+  border: 1px solid var(--border-main);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 150ms;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.event-group:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.event-group.expanded {
+  box-shadow: 0 0 0 2px rgba(19, 91, 236, 0.2);
+  border-color: rgba(19, 91, 236, 0.5);
 }
 
 .group-header {
-    display: flex;
-    align-items: center;
-    padding: 10px 15px;
-    cursor: pointer;
-    background-color: var(--color-bg-secondary);
-    transition: background 0.2s;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--surface-soft);
 }
 
-.group-header:hover {
-    background-color: var(--color-hover);
+.group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .group-icon {
-    font-size: 18px;
-    margin-right: 12px;
+  color: var(--primary);
+  padding: 0.375rem;
+  background-color: rgba(19, 91, 236, 0.1);
+  border-radius: 0.5rem;
+  transition: transform 150ms;
+}
+
+.event-group:hover .group-icon {
+  transform: scale(1.1);
+}
+
+.group-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.group-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .group-title {
-    flex: 1;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
-.group-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-right: 12px;
-    opacity: 0;
-    transition: opacity 0.2s;
+.group-badge {
+  font-size: 0.625rem;
+  padding: 0.125rem 0.375rem;
+  background-color: var(--surface-soft);
+  border: 1px solid var(--border-main);
+  border-radius: 9999px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-.group-header:hover .group-actions {
-    opacity: 1;
+.group-description {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  margin-top: 0.125rem;
 }
 
-.btn-icon.small {
-    padding: 4px;
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
-    background-color: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
+.group-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.btn-icon.small:hover:not(:disabled) {
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
+.delete-group-button {
+  padding: 0.375rem;
+  border-radius: 0.5rem;
+  color: var(--error);
+  opacity: 0;
+  transition: all 150ms;
 }
 
-.btn-icon.small.danger:hover {
-    background-color: var(--color-danger);
-    color: white;
-    border-color: var(--color-danger);
+.event-group:hover .delete-group-button {
+  opacity: 1;
 }
 
-.btn-icon.small:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+.delete-group-button:hover {
+  background-color: var(--error-bg);
 }
 
-.badge {
-    background-color: var(--color-bg-primary);
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-size: 11px;
-    color: var(--color-text-secondary);
+.expand-icon {
+  color: var(--text-muted);
+  transition: transform 150ms;
 }
 
-.group-toggle {
-    font-size: 12px;
-    color: var(--color-text-disabled);
+.expand-icon.rotated {
+  transform: rotate(180deg);
 }
 
-.group-body {
-    border-top: 1px solid var(--color-border);
-    background-color: var(--color-bg-primary);
+/* Group Details */
+.group-details {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border-main);
 }
 
 .event-item {
-    padding: 8px 15px;
-    border-bottom: 1px solid var(--color-border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: monospace;
-    font-size: 13px;
-    color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem;
+  background-color: var(--background);
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  transition: border-color 150ms;
 }
 
-.event-info {
-    flex: 1;
-    min-width: 0;
+.event-item:hover {
+  border-color: var(--border-main);
 }
 
-.event-desc {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: block;
+.event-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  flex: 1;
 }
 
-.event-item:last-child {
-    border-bottom: none;
+.event-index {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: monospace;
+  width: 1rem;
+  flex-shrink: 0;
 }
 
 .event-controls {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.small-input {
-    background: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-primary);
-    padding: 2px 4px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 12px;
+.event-input {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  background-color: var(--surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-main);
+  border-radius: 0.25rem;
+  outline: none;
 }
 
-.small-input.coord {
-    width: 45px;
+.event-input:focus {
+  outline: 1px solid var(--primary);
+  outline-offset: 0;
 }
 
-.small-input.char {
-    width: 25px;
-    text-align: center;
+.event-input-small {
+  width: 5rem;
 }
 
-.small-input.special {
-    width: 100px;
+.event-input-tiny {
+  width: 3.5rem;
+  padding: 0.125rem 0.25rem;
 }
 
-.btn-capture {
-    background: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border);
-    color: var(--color-accent);
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 12px;
-    cursor: pointer;
-    min-width: 60px;
-    text-align: center;
+.event-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
-.btn-capture:hover {
-    background: var(--color-hover);
-    border-color: var(--color-accent);
+.capture-button {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: monospace;
+  border-radius: 0.25rem;
+  border: 1px dashed var(--border-main);
+  background-color: var(--surface);
+  color: var(--text-main);
+  transition: all 150ms;
 }
 
-.btn-capture.capturing {
-    background: var(--color-accent-dim);
-    border-color: var(--color-accent);
-    color: var(--color-text-primary);
-    animation: pulse-recording 1.5s infinite;
+.capture-button.capturing {
+  background-color: rgba(19, 91, 236, 0.1);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
-.reorder-btns {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
+.event-description {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.4;
 }
 
-.btn-reorder {
-    background: none;
-    border: none;
-    color: var(--color-text-disabled);
-    cursor: pointer;
-    font-size: 8px;
-    padding: 0 4px;
-    line-height: 1;
+@media (max-width: 768px) {
+  .event-description {
+    display: none;
+  }
 }
 
-.btn-reorder:hover:not(:disabled) {
-    color: var(--color-text-primary);
+.delete-event-button {
+  padding: 0.25rem;
+  transition: color 150ms;
+  flex-shrink: 0;
 }
 
-.btn-reorder:disabled {
-    opacity: 0.2;
-    cursor: not-allowed;
+.delete-event-button:hover {
+  color: var(--error);
 }
 
-@keyframes pulse-recording {
-    0% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.5;
-    }
-
-    100% {
-        opacity: 1;
-    }
+/* End Node */
+.end-node-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.insert-btn-container {
-    position: relative;
-    display: flex;
-    align-items: center;
+.end-node {
+  width: 8rem;
+  height: 2.5rem;
+  background-color: var(--surface-soft);
+  border: 2px solid var(--border-main);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
 }
 
-.insert-menu {
-    right: 0;
-    left: auto;
-    width: 100px;
-    top: 0;
-    transform: translateY(-50%);
+.end-node-icon {
+  font-size: 0.875rem;
+  margin-right: 0.5rem;
 }
 
-.insert-menu button {
-    padding: 4px 8px;
-    font-size: 11px;
+.end-node-text {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
 }
 
-.small-select {
-    background: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-primary);
-    padding: 1px 2px;
-    border-radius: 4px;
-    font-size: 12px;
+/* Breadcrumbs */
+.breadcrumbs {
+  height: 2.5rem;
+  border-top: 1px solid var(--border-main);
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  z-index: 20;
 }
 
-.label {
-    font-size: 11px;
-    color: var(--color-text-disabled);
+.dark .breadcrumbs {
+  background-color: rgba(30, 41, 59, 0.8);
 }
 
-.unit {
-    font-size: 11px;
-    color: var(--color-text-disabled);
-    width: 16px;
+.breadcrumb-separator {
+  font-size: 0.625rem;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-    width: 6px;
+.breadcrumb-active {
+  color: var(--primary);
 }
 
-::-webkit-scrollbar-track {
-    background: transparent;
+/* Right Sidebar */
+.properties-sidebar {
+  width: 18rem;
+  border-left: 1px solid var(--border-main);
+  background-color: var(--surface);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
 }
 
-::-webkit-scrollbar-thumb {
-    background: var(--color-border);
-    border-radius: 3px;
+.properties-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.properties-title {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--text-main);
+}
+
+.properties-badge {
+  font-size: 0.625rem;
+  background-color: rgba(19, 91, 236, 0.1);
+  color: var(--primary);
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.properties-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.property-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.property-label {
+  font-size: 0.625rem;
+  font-weight: 900;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.property-textarea {
+  /* width: 100%; */
+  resize: none;
+  font-size: 0.75rem;
+  background-color: var(--surface-soft);
+  color: var(--text-main);
+  border: 1px solid var(--border-main);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  height: 6rem;
+  outline: none;
+  transition: all 150ms;
+}
+
+.property-textarea:focus {
+  outline: 1px solid var(--primary);
+  outline-offset: 0;
+}
+
+.execution-mode-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.slider-label {
+  color: var(--text-muted);
+}
+
+.slider-value {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.slider-input {
+  width: 100%;
+  height: 0.375rem;
+  background-color: var(--border-main);
+  border-radius: 0.5rem;
+  appearance: none;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.slider-input::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.number-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.number-input-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.number-input {
+  width: 5rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  background-color: var(--surface-soft);
+  color: var(--text-main);
+  border: 1px solid var(--border-main);
+  border-radius: 0.5rem;
+  outline: none;
+}
+
+.number-input:focus {
+  outline: 1px solid var(--primary);
+  outline-offset: 0;
+}
+
+.info-box {
+  padding: 1rem;
+  background-color: var(--warning-bg);
+  border-radius: 0.75rem;
+  border: 1px solid var(--warning-border);
+}
+
+.info-box-content {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.info-icon {
+  color: var(--warning);
+  font-size: 1.125rem;
+}
+
+.info-text {
+  font-size: 0.625rem;
+  color: var(--warning);
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.properties-footer {
+  padding: 1rem;
+  border-top: 1px solid var(--border-main);
+  background-color: var(--surface-soft);
+}
+
+.clear-button {
+  width: 100%;
+  padding: 0.625rem;
+  background-color: var(--surface);
+  color: var(--text-muted);
+  border-radius: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 900;
+  transition: all 150ms;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--border-main);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.clear-button:hover {
+  background-color: var(--error);
+  color: white;
+}
+
+/* Icon size utilities */
+.icon-sm {
+  font-size: 0.875rem; /* 14px */
+}
+
+.icon-lg {
+  font-size: 1.125rem; /* 18px */
 }
 </style>
