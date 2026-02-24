@@ -354,6 +354,15 @@ export const useScriptStore = defineStore('script', () => {
     }
 
     /**
+     * Create a new draft script
+     */
+    function createNewDraftScript(): Script {
+        const script = createEmptyScript();
+        script.name = `新建脚本_${new Date().toLocaleTimeString().replace(/:/g, '-')}`;
+        return script;
+    }
+
+    /**
      * Sync state with backend
      */
     async function syncState() {
@@ -504,6 +513,7 @@ export const useScriptStore = defineStore('script', () => {
         syncState,
         init,
         handleFrontendEvent,
+        createNewDraftScript,
         // Notifications
         notifications,
         showNotification,

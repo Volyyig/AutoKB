@@ -159,6 +159,13 @@ fn load_script(path: String) -> Result<Script, String> {
     Ok(script)
 }
 
+/// Delete a script file
+#[tauri::command]
+fn delete_script(path: String) -> Result<(), String> {
+    fs::remove_file(path).map_err(|e| format!("File delete error: {}", e))?;
+    Ok(())
+}
+
 /// Get default scripts directory
 #[tauri::command]
 fn get_scripts_dir(app: tauri::AppHandle) -> Result<String, String> {
@@ -568,6 +575,7 @@ pub fn run() {
             update_event_delay,
             delete_event,
             scale_delays,
+            delete_script,
             // App state
             get_app_state,
         ])
