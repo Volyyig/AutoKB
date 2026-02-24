@@ -28,6 +28,138 @@ export const useScriptStore = defineStore('script', () => {
     const notifications = ref<Notification[]>([]);
     let nextNotificationId = 0;
 
+    // Appearance State
+    const theme = ref({
+        primary: localStorage.getItem('theme-primary') || '#135bec',
+        background: localStorage.getItem('theme-background') || '#f6f6f8',
+        surface: localStorage.getItem('theme-surface') || '#ffffff',
+        surfaceSoft: localStorage.getItem('theme-surface-soft') || '#f8fafc',
+        textMain: localStorage.getItem('theme-text-main') || '#0f172a',
+        textMuted: localStorage.getItem('theme-text-muted') || '#64748b',
+        borderMain: localStorage.getItem('theme-border-main') || '#e2e8f0',
+        // Status colors - main
+        success: localStorage.getItem('theme-success') || '#22c55e',
+        error: localStorage.getItem('theme-error') || '#ef4444',
+        warning: localStorage.getItem('theme-warning') || '#f59e0b',
+        info: localStorage.getItem('theme-info') || '#3b82f6',
+        // Status colors - background
+        successBg: localStorage.getItem('theme-successBg') || '#f0fdf4',
+        errorBg: localStorage.getItem('theme-errorBg') || '#fef2f2',
+        warningBg: localStorage.getItem('theme-warningBg') || '#fffbeb',
+        infoBg: localStorage.getItem('theme-infoBg') || '#eff6ff',
+        // Status colors - border
+        successBorder: localStorage.getItem('theme-successBorder') || '#bbf7d0',
+        errorBorder: localStorage.getItem('theme-errorBorder') || '#fecaca',
+        warningBorder: localStorage.getItem('theme-warningBorder') || '#fde68a',
+        infoBorder: localStorage.getItem('theme-infoBorder') || '#bfdbfe',
+        isDark: localStorage.getItem('theme-dark') === 'true'
+    });
+
+    const themePresets = [
+        {
+            name: '清新蓝',
+            primary: '#135bec', background: '#f6f6f8', surface: '#ffffff',
+            surfaceSoft: '#f8fafc', textMain: '#0f172a', textMuted: '#64748b',
+            borderMain: '#e2e8f0',
+            success: '#22c55e', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6',
+            successBg: '#f0fdf4', errorBg: '#fef2f2', warningBg: '#fffbeb', infoBg: '#eff6ff',
+            successBorder: '#bbf7d0', errorBorder: '#fecaca', warningBorder: '#fde68a', infoBorder: '#bfdbfe',
+            isDark: false
+        },
+        {
+            name: '深邃蓝',
+            primary: '#3b82f6', background: '#0f172a', surface: '#1e293b',
+            surfaceSoft: '#1e293b80', textMain: '#f8fafc', textMuted: '#94a3b8',
+            borderMain: '#1e293b',
+            success: '#4ade80', error: '#f87171', warning: '#fbbf24', info: '#60a5fa',
+            successBg: '#14532d', errorBg: '#7f1d1d', warningBg: '#78350f', infoBg: '#1e3a8a',
+            successBorder: '#166534', errorBorder: '#991b1b', warningBorder: '#92400e', infoBorder: '#1e40af',
+            isDark: true
+        },
+        {
+            name: '紫色魅影',
+            primary: '#8b5cf6', background: '#020617', surface: '#0f172a',
+            surfaceSoft: '#1e293b', textMain: '#f8fafc', textMuted: '#94a3b8',
+            borderMain: '#1e293b',
+            success: '#4ade80', error: '#f87171', warning: '#fbbf24', info: '#60a5fa',
+            successBg: '#14532d', errorBg: '#7f1d1d', warningBg: '#78350f', infoBg: '#1e3a8a',
+            successBorder: '#166534', errorBorder: '#991b1b', warningBorder: '#92400e', infoBorder: '#1e40af',
+            isDark: true
+        },
+        {
+            name: '极简白',
+            primary: '#0f172a', background: '#ffffff', surface: '#ffffff',
+            surfaceSoft: '#f1f5f9', textMain: '#0f172a', textMuted: '#64748b',
+            borderMain: '#f1f5f9',
+            success: '#22c55e', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6',
+            successBg: '#f0fdf4', errorBg: '#fef2f2', warningBg: '#fffbeb', infoBg: '#eff6ff',
+            successBorder: '#bbf7d0', errorBorder: '#fecaca', warningBorder: '#fde68a', infoBorder: '#bfdbfe',
+            isDark: false
+        },
+    ];
+
+    function applyTheme() {
+        const root = document.documentElement;
+        root.style.setProperty('--primary', theme.value.primary);
+        root.style.setProperty('--background', theme.value.background);
+        root.style.setProperty('--surface', theme.value.surface);
+        root.style.setProperty('--surface-soft', theme.value.surfaceSoft);
+        root.style.setProperty('--text-main', theme.value.textMain);
+        root.style.setProperty('--text-muted', theme.value.textMuted);
+        root.style.setProperty('--border-main', theme.value.borderMain);
+
+        // Apply status colors - main
+        root.style.setProperty('--success', theme.value.success);
+        root.style.setProperty('--error', theme.value.error);
+        root.style.setProperty('--warning', theme.value.warning);
+        root.style.setProperty('--info', theme.value.info);
+
+        // Apply status colors - background
+        root.style.setProperty('--success-bg', theme.value.successBg);
+        root.style.setProperty('--error-bg', theme.value.errorBg);
+        root.style.setProperty('--warning-bg', theme.value.warningBg);
+        root.style.setProperty('--info-bg', theme.value.infoBg);
+
+        // Apply status colors - border
+        root.style.setProperty('--success-border', theme.value.successBorder);
+        root.style.setProperty('--error-border', theme.value.errorBorder);
+        root.style.setProperty('--warning-border', theme.value.warningBorder);
+        root.style.setProperty('--info-border', theme.value.infoBorder);
+
+        if (theme.value.isDark) {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+
+        // Save to localStorage
+        localStorage.setItem('theme-primary', theme.value.primary);
+        localStorage.setItem('theme-background', theme.value.background);
+        localStorage.setItem('theme-surface', theme.value.surface);
+        localStorage.setItem('theme-surface-soft', theme.value.surfaceSoft);
+        localStorage.setItem('theme-text-main', theme.value.textMain);
+        localStorage.setItem('theme-text-muted', theme.value.textMuted);
+        localStorage.setItem('theme-border-main', theme.value.borderMain);
+        localStorage.setItem('theme-success', theme.value.success);
+        localStorage.setItem('theme-error', theme.value.error);
+        localStorage.setItem('theme-warning', theme.value.warning);
+        localStorage.setItem('theme-info', theme.value.info);
+        localStorage.setItem('theme-successBg', theme.value.successBg);
+        localStorage.setItem('theme-errorBg', theme.value.errorBg);
+        localStorage.setItem('theme-warningBg', theme.value.warningBg);
+        localStorage.setItem('theme-infoBg', theme.value.infoBg);
+        localStorage.setItem('theme-successBorder', theme.value.successBorder);
+        localStorage.setItem('theme-errorBorder', theme.value.errorBorder);
+        localStorage.setItem('theme-warningBorder', theme.value.warningBorder);
+        localStorage.setItem('theme-infoBorder', theme.value.infoBorder);
+        localStorage.setItem('theme-dark', String(theme.value.isDark));
+    }
+
+    function setTheme(newTheme: any) {
+        theme.value = { ...newTheme };
+        applyTheme();
+    }
+
     // Computed
     const eventCount = computed(() => currentScript.value.events.length);
     const totalDuration = computed(() =>
@@ -332,6 +464,7 @@ export const useScriptStore = defineStore('script', () => {
         await syncState();
         await loadTasks();
         await listSavedScripts();
+        applyTheme();
     }
 
     async function handleFrontendEvent(e: KeyboardEvent) {
@@ -416,6 +549,10 @@ export const useScriptStore = defineStore('script', () => {
         createNewDraftScript,
         notifications,
         showNotification,
-        removeNotification
+        removeNotification,
+        theme,
+        setTheme,
+        themePresets,
+        applyTheme
     };
 });

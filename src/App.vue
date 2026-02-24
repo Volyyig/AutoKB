@@ -3,6 +3,7 @@ import { onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import TaskDashboard from './components/TaskDashboard.vue';
 import ScriptLibrary from './components/ScriptLibrary.vue';
+import SettingsView from './components/SettingsView.vue';
 import VisualScriptEditor from './components/VisualScriptEditor.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import { useScriptStore } from './stores/scriptStore';
@@ -24,17 +25,16 @@ const navItems = [
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark font-display">
+  <div class="flex h-screen overflow-hidden bg-background-main font-display">
     <!-- Sidebar Navigation -->
-    <aside
-      class="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-      <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
+    <aside class="w-64 flex-shrink-0 border-r border-border-main bg-surface-main flex flex-col">
+      <div class="p-6 border-b border-border-main flex items-center gap-3">
         <div class="bg-primary p-2 rounded-lg text-white">
           <span class="material-symbols-outlined block text-2xl">auto_fix_high</span>
         </div>
         <div>
           <h1 class="text-lg font-bold leading-none">AutoKB</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">版本 v2.4.0</p>
+          <p class="text-xs text-text-muted mt-1">版本 v2.4.0</p>
         </div>
       </div>
 
@@ -43,14 +43,14 @@ const navItems = [
           'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors font-medium text-left',
           store.activeTab === item.id
             ? 'bg-primary/10 text-primary'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            : 'text-text-muted hover:bg-surface-soft'
         ]">
           <span class="material-symbols-outlined">{{ item.icon }}</span>
           <span>{{ item.name }}</span>
         </button>
       </nav>
 
-      <div class="p-4 border-t border-slate-200 dark:border-slate-800">
+      <div class="p-4 border-t border-border-main">
         <button @click="store.currentView = 'visual-editor'"
           class="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors">
           <span class="material-symbols-outlined text-xl">add_circle</span>
@@ -62,29 +62,27 @@ const navItems = [
     <!-- Main Content Area -->
     <main class="flex-1 flex flex-col overflow-hidden">
       <!-- Header -->
-      <header
-        class="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between px-8">
+      <header class="h-16 border-b border-border-main bg-surface-main flex items-center justify-between px-8">
         <div class="flex items-center gap-6 flex-1">
           <h2 class="text-xl font-bold tracking-tight">Desktop Automation</h2>
           <div class="relative w-full max-w-md">
             <span
               class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">search</span>
             <input
-              class="w-full pl-10 pr-4 py-2 rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+              class="w-full pl-10 pr-4 py-2 rounded-lg border-border-main bg-surface-soft focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
               placeholder="搜索任务..." type="text" />
           </div>
         </div>
         <div class="flex items-center gap-4">
-          <div
-            class="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+          <div class="flex items-center gap-3 bg-surface-soft px-3 py-1.5 rounded-full border border-border-main">
             <span
-              :class="['w-2 h-2 rounded-full', store.isRecording ? 'bg-red-500 animate-pulse' : store.isPlaying ? 'bg-green-500 animate-pulse' : 'bg-slate-400']"></span>
-            <span class="text-xs font-medium text-slate-600 dark:text-slate-400">{{ store.statusMessage }}</span>
+              :class="['w-2 h-2 rounded-full', store.isRecording ? 'bg-error animate-pulse' : store.isPlaying ? 'bg-success animate-pulse' : 'bg-text-muted/40']"></span>
+            <span class="text-xs font-medium text-text-muted">{{ store.statusMessage }}</span>
           </div>
-          <button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative">
+          <button class="p-2 text-text-muted hover:bg-surface-soft rounded-lg relative">
             <span class="material-symbols-outlined">notifications</span>
             <span
-              class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+              class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-white dark:border-slate-900"></span>
           </button>
         </div>
       </header>
@@ -97,11 +95,11 @@ const navItems = [
             <div v-else-if="store.activeTab === 'scripts'">
               <ScriptLibrary />
             </div>
-            <div v-else-if="store.activeTab === 'logs'" class="p-4 text-center text-slate-500">
+            <div v-else-if="store.activeTab === 'logs'" class="p-4 text-center text-text-muted">
               运行日志（正在开发中...）
             </div>
-            <div v-else-if="store.activeTab === 'settings'" class="p-4 text-center text-slate-500">
-              设置页面（正在开发中...）
+            <div v-else-if="store.activeTab === 'settings'">
+              <SettingsView />
             </div>
           </div>
         </Transition>

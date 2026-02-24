@@ -1,14 +1,91 @@
 @import "tailwindcss";
 
-@theme {
-  --color-primary: #135bec;
-  --color-background-light: #f6f6f8;
-  --color-background-dark: #101622;
+:root {
+  --primary: #135bec;
+  --background: #f6f6f8;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-main: #e2e8f0;
   --font-display: "Inter", "system-ui", "sans-serif";
+  
+  /* Status colors - main */
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+  
+  /* Status colors - background */
+  --success-bg: #f0fdf4;
+  --error-bg: #fef2f2;
+  --warning-bg: #fffbeb;
+  --info-bg: #eff6ff;
+  
+  /* Status colors - border */
+  --success-border: #bbf7d0;
+  --error-border: #fecaca;
+  --warning-border: #fde68a;
+  --info-border: #bfdbfe;
+}
+
+:root.dark {
+  --primary: #3b82f6;
+  --background: #0f172a;
+  --surface: #1e293b;
+  --surface-soft: #1e293b80;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-main: #1e293b;
+  
+  /* Status colors - main (dark mode) */
+  --success: #4ade80;
+  --error: #f87171;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+  
+  /* Status colors - background (dark mode) */
+  --success-bg: #14532d;
+  --error-bg: #7f1d1d;
+  --warning-bg: #78350f;
+  --info-bg: #1e3a8a;
+  
+  /* Status colors - border (dark mode) */
+  --success-border: #166534;
+  --error-border: #991b1b;
+  --warning-border: #92400e;
+  --info-border: #1e40af;
+}
+
+@theme {
+  --color-primary: var(--primary);
+  --color-background-main: var(--background);
+  --color-surface-main: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-border-main: var(--border-main);
+  --font-display: var(--font-display);
+  
+  /* Status colors mapping */
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  
+  --color-success-bg: var(--success-bg);
+  --color-error-bg: var(--error-bg);
+  --color-warning-bg: var(--warning-bg);
+  --color-info-bg: var(--info-bg);
+  
+  --color-success-border: var(--success-border);
+  --color-error-border: var(--error-border);
+  --color-warning-border: var(--warning-border);
+  --color-info-border: var(--info-border);
 }
 
 body {
-  @apply bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100;
+  @apply bg-background-main font-display text-text-main;
   margin: 0;
   padding: 0;
   overflow: hidden;
