@@ -115,23 +115,34 @@ export function getKeyDisplay(key: KeyboardKey): string {
 }
 
 export function getEventDescription(event: ScriptEvent): string {
+    const translateButton = (btn: MouseButton) => {
+        const map: Record<MouseButton, string> = {
+            left: '左键',
+            right: '右键',
+            middle: '中键',
+            back: '后退键',
+            forward: '前进键'
+        };
+        return map[btn] || btn;
+    };
+
     switch (event.event_type) {
         case 'Delay':
-            return `Wait: ${formatDuration(event.duration_ms)}`;
+            return `等待: ${formatDuration(event.duration_ms)}`;
         case 'KeyPress':
-            return `Key Down: ${getKeyDisplay(event.key)}`;
+            return `键盘按下 (${getKeyDisplay(event.key)})`;
         case 'KeyRelease':
-            return `Key Up: ${getKeyDisplay(event.key)}`;
+            return `键盘弹起 (${getKeyDisplay(event.key)})`;
         case 'MousePress':
-            return `Mouse Down: ${event.button}`;
+            return `鼠标按下 (${translateButton(event.button)})`;
         case 'MouseRelease':
-            return `Mouse Up: ${event.button}`;
+            return `鼠标弹起 (${translateButton(event.button)})`;
         case 'MouseMove':
-            return `Move: (${Math.round(event.x)}, ${Math.round(event.y)})`;
+            return `鼠标移动 (${Math.round(event.x)}, ${Math.round(event.y)})`;
         case 'MouseScroll':
-            return `Scroll: (${event.delta_x}, ${event.delta_y})`;
+            return `鼠标滚动 (${event.delta_x}, ${event.delta_y})`;
         default:
-            return 'Unknown Event';
+            return '未知事件';
     }
 }
 
@@ -144,7 +155,7 @@ export function formatDuration(ms: number): string {
 
 export function createEmptyScript(): Script {
     return {
-        name: 'Untitled Script',
+        name: '未命名脚本',
         description: '',
         created_at: new Date().toISOString(),
         modified_at: new Date().toISOString(),

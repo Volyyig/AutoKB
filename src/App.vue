@@ -56,13 +56,13 @@ onUnmounted(() => {
       <main class="main-content">
         <section class="panel event-panel">
           <div class="panel-header">
-            <h2>Current Script</h2>
+            <h2>当前脚本</h2>
             <div class="panel-actions">
-              <span class="event-count">{{ store.eventCount }} events</span>
+              <span class="event-count">{{ store.eventCount }} 个事件</span>
               <span class="duration" v-if="store.totalDuration > 0">
                 {{ formatDuration(store.totalDuration) }}
               </span>
-              <button class="btn-icon" @click="store.clearScript" title="Clear Script">
+              <button class="btn-icon" @click="store.clearScript" title="清空脚本">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="3 6 5 6 21 6"></polyline>
@@ -78,7 +78,7 @@ onUnmounted(() => {
 
         <aside class="panel settings-panel">
           <div class="panel-header">
-            <h2>Settings</h2>
+            <h2>设置</h2>
           </div>
           <ParamEditor />
         </aside>
@@ -86,8 +86,8 @@ onUnmounted(() => {
 
       <footer class="footer">
         <div class="shortcuts">
-          <span class="shortcut"><strong>F9</strong> Start/Stop Recording</span>
-          <span class="shortcut"><strong>F10</strong> Start/Stop Playback</span>
+          <span class="shortcut"><strong>F9</strong> 开始/停止录制</span>
+          <span class="shortcut"><strong>F10</strong> 开始/停止回放</span>
         </div>
       </footer>
     </div>

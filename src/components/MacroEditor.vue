@@ -7,11 +7,11 @@
                     <line x1="19" y1="12" x2="5" y2="12"></line>
                     <polyline points="12 19 5 12 12 5"></polyline>
                 </svg>
-                Back to Editor
+                返回编辑器
             </button>
-            <h2>Macro Management</h2>
+            <h2>宏管理</h2>
             <div class="macro-toggle">
-                <span class="toggle-label">Macro Listener</span>
+                <span class="toggle-label">宏监听器</span>
                 <button class="btn-toggle" :class="{ 'active': store.isMacroActive }"
                     @click="store.toggleMacroListener">
                     {{ store.isMacroActive ? 'ON' : 'OFF' }}
@@ -22,45 +22,44 @@
         <div class="editor-content">
             <!-- Create New Macro -->
             <div class="panel create-panel">
-                <h3>Create New Macro</h3>
+                <h3>创建新宏</h3>
                 <div class="form-group">
-                    <label>Macro Name</label>
-                    <input v-model="newMacroName" type="text" placeholder="e.g. Farm Loop" />
+                    <label>宏名称</label>
+                    <input v-model="newMacroName" type="text" placeholder="例如：自动刷图" />
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Trigger Type</label>
+                        <label>触发类型</label>
                         <div class="trigger-type-switch">
-                            <button :class="{ active: triggerType === 'key' }"
-                                @click="triggerType = 'key'">Keyboard</button>
+                            <button :class="{ active: triggerType === 'key' }" @click="triggerType = 'key'">键盘</button>
                             <button :class="{ active: triggerType === 'mouse' }"
-                                @click="triggerType = 'mouse'">Mouse</button>
+                                @click="triggerType = 'mouse'">鼠标</button>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Trigger Value</label>
+                        <label>触发值</label>
                         <div v-if="triggerType === 'key'" class="input-recorder">
                             <button class="btn-record" :class="{ recording: isRecordingTrigger }"
                                 @click="startTriggerRecording">
-                                {{ isRecordingTrigger ? 'Press any key...' : (recordedKey || 'Click to set key') }}
+                                {{ isRecordingTrigger ? '请按任意键...' : (recordedKey || '点击设置按键') }}
                             </button>
                         </div>
                         <select v-else v-model="selectedMouseButton">
-                            <option value="left">Left Button</option>
-                            <option value="right">Right Button</option>
-                            <option value="middle">Middle Button</option>
-                            <option value="back">Back Button</option>
-                            <option value="forward">Forward Button</option>
+                            <option value="left">左键</option>
+                            <option value="right">右键</option>
+                            <option value="middle">中键</option>
+                            <option value="back">后退键</option>
+                            <option value="forward">前进键</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Execute Script</label>
+                    <label>执行脚本</label>
                     <select v-model="selectedScript" class="script-select">
-                        <option v-if="store.savedScripts.length === 0" disabled value="">No saved scripts found</option>
+                        <option v-if="store.savedScripts.length === 0" disabled value="">未发现已保存脚本</option>
                         <option v-for="script in store.savedScripts" :key="script.path" :value="script.path">
                             {{ script.name }}
                         </option>
@@ -73,14 +72,14 @@
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    Add Binding
+                    添加绑定
                 </button>
             </div>
 
             <!-- Macro List -->
             <div class="macro-list">
                 <div v-if="store.macros.length === 0" class="empty-state">
-                    No macros defined. Create one to get started.
+                    未定义任何宏。请创建一个以开始。
                 </div>
                 <div v-else class="macro-grid">
                     <div v-for="macro in store.macros" :key="macro.id" class="macro-card"
@@ -89,7 +88,7 @@
                             <span class="macro-name">{{ macro.name }}</span>
                             <div class="macro-actions">
                                 <button class="btn-icon small"
-                                    @click="store.toggleMacroEnabled(macro.id, !macro.enabled)" title="Toggle Enable">
+                                    @click="store.toggleMacroEnabled(macro.id, !macro.enabled)" title="启用/禁用">
                                     <svg v-if="macro.enabled" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                         stroke-linecap="round" stroke-linejoin="round" class="icon-green">
@@ -102,8 +101,7 @@
                                         <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
                                     </svg>
                                 </button>
-                                <button class="btn-icon small danger" @click="store.removeMacro(macro.id)"
-                                    title="Delete">
+                                <button class="btn-icon small danger" @click="store.removeMacro(macro.id)" title="删除">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                         stroke-linejoin="round">
@@ -117,12 +115,12 @@
                         </div>
                         <div class="macro-details">
                             <div class="detail-item">
-                                <span class="label">Trigger:</span>
+                                <span class="label">触发条件：</span>
                                 <span class="value badge">{{ formatTrigger(macro.trigger) }}</span>
                             </div>
                             <div class="detail-arrow">⬇</div>
                             <div class="detail-item">
-                                <span class="label">Script:</span>
+                                <span class="label">执行脚本：</span>
                                 <span class="value code">{{ getScriptName(macro.script_path) }}</span>
                             </div>
                         </div>
@@ -159,7 +157,7 @@ const canCreate = computed(() => {
 // Key Recording Logic
 function startTriggerRecording() {
     isRecordingTrigger.value = true;
-    recordedKey.value = 'Press key...';
+    recordedKey.value = '请按键...';
 }
 
 function handleKeyDown(e: KeyboardEvent) {
@@ -182,9 +180,9 @@ onUnmounted(() => {
 // Helpers
 function formatTrigger(trigger: MacroTrigger): string {
     if (trigger.trigger_type === 'KeyPress') {
-        return `Key: ${trigger.key.type === 'Char' ? trigger.key.value.toUpperCase() : trigger.key.value}`;
+        return `按键：${trigger.key.type === 'Char' ? trigger.key.value.toUpperCase() : trigger.key.value}`;
     } else {
-        return `Mouse: ${trigger.button}`;
+        return `鼠标：${trigger.button}`;
     }
 }
 

@@ -16,13 +16,13 @@ export function getEventTypeCategory(event: ScriptEvent): string {
 
 export function formatGroupTitle(type: string): string {
     switch (type) {
-        case 'Delay': return 'Wait Time';
-        case 'MouseMove': return 'Mouse Movements';
-        case 'MouseScroll': return 'Scroll Events';
-        case 'KeyPress': return 'Key Presses';
-        case 'KeyRelease': return 'Key Releases';
-        case 'MousePress': return 'Mouse Clicks (Down)';
-        case 'MouseRelease': return 'Mouse Clicks (Up)';
+        case 'Delay': return '等待时间';
+        case 'MouseMove': return '鼠标移动';
+        case 'MouseScroll': return '鼠标滚轮';
+        case 'KeyPress': return '键盘按下';
+        case 'KeyRelease': return '键盘弹起';
+        case 'MousePress': return '鼠标按键按下';
+        case 'MouseRelease': return '鼠标按键弹起';
         default: return type;
     }
 }
@@ -33,23 +33,46 @@ export function groupEvents(events: ScriptEvent[]): EventGroup[] {
 
     let currentGroup: EventGroup | null = null;
 
-    events.forEach((event, index) => {
-        const type = getEventTypeCategory(event);
+    for (let i = 0; i < events.length; i++) {
+        const event = events[i];
+        let category = getEventTypeCategory(event);
 
-        if (currentGroup && currentGroup.type === type) {
+        // Logic to absorb Delay nodes only if they are sandwiched between identical categories
+        if (category === 'Delay') {
+            // Find the next non-delay event category
+            let nextCategory: string | null = null;
+            for (let j = i + 1; j < events.length; j++) {
+                const nextEventCat = getEventTypeCategory(events[j]);
+                if (nextEventCat !== 'Delay') {
+                    nextCategory = nextEventCat;
+                    break;
+                }
+            }
+
+            const prevCategory = currentGroup ? currentGroup.type : null;
+
+            // Only absorb if it's a "sandwich" of the same category
+            // e.g., MouseMove -> Delay -> MouseMove
+            if (nextCategory && prevCategory === nextCategory) {
+                category = prevCategory;
+            }
+            // Otherwise it remains a standalone 'Delay' category
+        }
+
+        if (currentGroup && currentGroup.type === category) {
             currentGroup.events.push(event);
         } else {
             if (currentGroup) {
                 groups.push(currentGroup);
             }
             currentGroup = {
-                type,
+                type: category,
                 events: [event],
-                expanded: false,
-                startIndex: index
+                expanded: category !== 'MouseMove',
+                startIndex: i
             };
         }
-    });
+    }
 
     if (currentGroup) {
         groups.push(currentGroup);

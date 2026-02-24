@@ -20,7 +20,7 @@ const store = useScriptStore();
                         <circle cx="12" cy="12" r="10"></circle>
                     </svg>
                 </span>
-                {{ store.isRecording ? 'Stop Recording' : 'Start Recording' }}
+                {{ store.isRecording ? '停止录制' : '开始录制' }}
             </button>
         </div>
 
@@ -38,14 +38,13 @@ const store = useScriptStore();
                         <polygon points="5 3 19 12 5 21 5 3"></polygon>
                     </svg>
                 </span>
-                {{ store.isPlaying ? 'Stop Playback' : 'Start Playback' }}
+                {{ store.isPlaying ? '停止回放' : '开始回放' }}
             </button>
         </div>
 
         <!-- File Operations -->
         <div class="control-group file-group">
-            <button class="btn btn-secondary" @click="store.saveScript" :disabled="!store.hasEvents"
-                title="Save Script">
+            <button class="btn btn-secondary" @click="store.saveScript" :disabled="!store.hasEvents" title="保存脚本">
                 <span class="btn-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -54,16 +53,16 @@ const store = useScriptStore();
                         <polyline points="7 3 7 8 15 8"></polyline>
                     </svg>
                 </span>
-                Save
+                保存
             </button>
-            <button class="btn btn-secondary" @click="store.currentView = 'visual-editor'" title="Check / Edit Script">
+            <button class="btn btn-secondary" @click="store.currentView = 'visual-editor'" title="查看/编辑脚本">
                 <span class="btn-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                 </span>
-                Check
+                查看
             </button>
         </div>
 
@@ -79,9 +78,9 @@ const store = useScriptStore();
                         <line x1="10" y1="14" x2="21" y2="3"></line>
                     </svg>
                 </span>
-                Manage Macros
+                宏管理
             </button>
-            <div class="macro-status" v-if="store.isMacroActive" title="Macros Active">
+            <div class="macro-status" v-if="store.isMacroActive" title="宏监听中">
                 <span class="status-dot-pulse"></span>
             </div>
         </div>

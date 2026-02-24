@@ -46,8 +46,8 @@ function selectGroup(group: EventGroup) {
                     <line x1="9" y1="15" x2="15" y2="15"></line>
                 </svg>
             </div>
-            <p>No events recorded</p>
-            <p class="empty-hint">Press F9 or click "Start Recording"</p>
+            <p>未记录任何事件</p>
+            <p class="empty-hint">按下 F9 或点击“开始录制”</p>
         </div>
 
         <!-- Event Items -->
@@ -64,7 +64,7 @@ function selectGroup(group: EventGroup) {
                     </div>
                     <div class="group-info">
                         <span class="group-title">{{ formatGroupTitle(group.type) }}</span>
-                        <span class="group-count">{{ group.events.length }} events</span>
+                        <span class="group-count">{{ group.events.length }} 个事件</span>
                     </div>
                 </div>
 

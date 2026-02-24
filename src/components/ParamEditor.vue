@@ -83,17 +83,17 @@ watch(() => store.selectedEventIndex, () => {
                     <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
                     <path d="M16 21h5v-5"></path>
                 </svg>
-                Loop Settings
+                循环设置
             </h3>
             <div class="param-row">
-                <label>Count</label>
+                <label>循环次数</label>
                 <div class="input-group">
                     <input type="number" v-model.number="loopCount" min="0" @change="updateLoopConfig" />
-                    <span class="input-hint">0 = Infinite</span>
+                    <span class="input-hint">0 = 无限循环</span>
                 </div>
             </div>
             <div class="param-row">
-                <label>Interval</label>
+                <label>循环间隔</label>
                 <div class="input-group">
                     <input type="number" v-model.number="loopDelay" min="0" step="100" @change="updateLoopConfig" />
                     <span class="input-unit">ms</span>
@@ -108,10 +108,10 @@ watch(() => store.selectedEventIndex, () => {
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                 </svg>
-                Speed Settings
+                速度设置
             </h3>
             <div class="param-row">
-                <label>Multiplier</label>
+                <label>执行倍率</label>
                 <div class="speed-control">
                     <input type="range" v-model.number="speedMultiplier" min="0.25" max="4" step="0.25"
                         @change="updateSpeed" />
@@ -134,7 +134,7 @@ watch(() => store.selectedEventIndex, () => {
                     <circle cx="12" cy="12" r="10"></circle>
                     <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
-                Delay Adjustment
+                延迟批量调整
             </h3>
             <div class="scale-buttons">
                 <button class="scale-btn" @click="scaleAllDelays(0.5)">÷2</button>
@@ -152,15 +152,15 @@ watch(() => store.selectedEventIndex, () => {
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                 </svg>
-                Selected Event
+                选中事件编辑
             </h3>
             <div class="event-details">
                 <div class="detail-row">
-                    <span class="detail-label">Type:</span>
+                    <span class="detail-label">类型：</span>
                     <span class="detail-value">{{ selectedEvent.event_type }}</span>
                 </div>
                 <div class="detail-row" v-if="selectedEvent.event_type === 'Delay'">
-                    <span class="detail-label">Delay:</span>
+                    <span class="detail-label">等待时间：</span>
                     <div class="input-group small">
                         <button class="adjust-btn" @click="adjustDelay(-10)" title="-10ms">«</button>
                         <button class="adjust-btn" @click="adjustDelay(-1)" title="-1ms">‹</button>
@@ -168,7 +168,7 @@ watch(() => store.selectedEventIndex, () => {
                         <button class="adjust-btn" @click="adjustDelay(1)" title="+1ms">›</button>
                         <button class="adjust-btn" @click="adjustDelay(10)" title="+10ms">»</button>
                         <span class="input-unit">ms</span>
-                        <button class="apply-btn" @click="updateSelectedDelay">Apply</button>
+                        <button class="apply-btn" @click="updateSelectedDelay">应用</button>
                     </div>
                 </div>
             </div>
@@ -178,7 +178,7 @@ watch(() => store.selectedEventIndex, () => {
                     <polyline points="3 6 5 6 21 6"></polyline>
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                 </svg>
-                Delete Event
+                删除当前事件
             </button>
         </div>
     </div>

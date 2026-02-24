@@ -8,9 +8,9 @@
                     <line x1="19" y1="12" x2="5" y2="12"></line>
                     <polyline points="12 19 5 12 12 5"></polyline>
                 </svg>
-                Back
+                返回
             </button>
-            <h2>Script Editor</h2>
+            <h2>脚本编辑器</h2>
             <div class="header-actions">
                 <!-- Placeholder for potentially other actions -->
             </div>
@@ -20,8 +20,8 @@
             <!-- Left Sidebar: Script List -->
             <div class="sidebar">
                 <div class="sidebar-header">
-                    <h3>Scripts</h3>
-                    <button class="btn-icon small" @click="refreshScripts" title="Refresh List">
+                    <h3>脚本列表</h3>
+                    <button class="btn-icon small" @click="refreshScripts" title="刷新列表">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M23 4v6h-6"></path>
@@ -32,7 +32,7 @@
                 </div>
                 <div class="script-list">
                     <div v-if="store.savedScripts.length === 0" class="empty-list">
-                        No scripts found.
+                        未找到脚本。
                     </div>
                     <div v-for="script in store.savedScripts" :key="script.path" class="script-item"
                         :class="{ active: currentScriptPath === script.path }" @click="loadScriptForEdit(script.path)">
@@ -44,13 +44,13 @@
             <!-- Right Content: Editor -->
             <div class="main-editor">
                 <div v-if="!currentScript" class="empty-state">
-                    Please select a script from the list to edit.
+                    请从列表中选择要编辑的脚本。
                 </div>
                 <template v-else>
                     <div class="toolbar">
                         <div class="script-info">
                             <h3>{{ currentScript.name }}</h3>
-                            <span class="event-count">{{ currentScript.events.length }} events</span>
+                            <span class="event-count">{{ currentScript.events.length }} 个事件</span>
                         </div>
                         <div class="toolbar-actions">
                             <button class="btn btn-secondary" @click="saveChanges">
@@ -61,7 +61,7 @@
                                     <polyline points="17 21 17 13 7 13 7 21"></polyline>
                                     <polyline points="7 3 7 8 15 8"></polyline>
                                 </svg>
-                                Save
+                                保存
                             </button>
                             <button class="btn btn-primary" @click="loadIntoPlayback">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -70,14 +70,14 @@
                                     <path d="M5 12h14"></path>
                                     <path d="M12 5l7 7-7 7"></path>
                                 </svg>
-                                Load
+                                载入
                             </button>
                         </div>
                     </div>
 
                     <div class="events-container">
                         <div v-if="groups.length === 0" class="no-events">
-                            No events in this script.
+                            脚本中没有事件。
                         </div>
                         <div v-else class="event-groups">
                             <div v-for="(group, index) in groups" :key="index" class="event-group"
@@ -93,8 +93,7 @@
                                         <span class="badge">{{ group.events.length }}</span>
                                     </div>
                                     <div class="group-actions" @click.stop>
-                                        <button class="btn-icon small danger" @click="deleteGroup(index)"
-                                            title="Delete Group">
+                                        <button class="btn-icon small danger" @click="deleteGroup(index)" title="删除组">
                                             🗑️
                                         </button>
                                     </div>
@@ -107,7 +106,7 @@
                                         <span class="event-desc">{{ getEventDescription(event) }}</span>
                                         <div class="event-controls">
                                             <template v-if="event.event_type === 'Delay'">
-                                                <span class="label">Duration:</span>
+                                                <span class="label">等待时间：</span>
                                                 <input type="number" v-model.number="event.duration_ms"
                                                     class="delay-input" min="0">
                                                 <span class="unit">ms</span>
@@ -182,7 +181,7 @@ function deleteEvent(groupIndex: number, eventIndex: number) {
 
 function deleteGroup(groupIndex: number) {
     if (!currentScript.value) return;
-    if (!confirm('Are you sure you want to delete this entire group of events?')) return;
+    if (!confirm('确定要删除整个事件组吗？')) return;
 
     const group = groups.value[groupIndex];
     currentScript.value.events.splice(group.startIndex, group.events.length);
@@ -209,18 +208,18 @@ async function saveChanges() {
     if (!currentScript.value || !currentScriptPath.value) return;
     try {
         await invoke('save_script', { script: currentScript.value, path: currentScriptPath.value });
-        store.showNotification('Saved successfully!', 'success');
+        store.showNotification('保存成功！', 'success');
     } catch (e) {
-        store.showNotification('Save failed: ' + e, 'error');
+        store.showNotification('保存失败: ' + e, 'error');
     }
 }
 
 async function loadIntoPlayback() {
     if (!currentScript.value) return;
     store.currentScript = JSON.parse(JSON.stringify(currentScript.value));
-    store.statusMessage = `Loaded ${currentScript.value.name}`;
+    store.statusMessage = `已加载 ${currentScript.value.name}`;
     store.currentView = 'home';
-    store.showNotification(`Loaded ${currentScript.value.name} for playback.`, 'info');
+    store.showNotification(`已加载 ${currentScript.value.name} 以供回放。`, 'info');
 }
 
 onMounted(() => {
