@@ -366,9 +366,7 @@ use tauri::{
     },
 };
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
-
 // ... (existing code)
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -482,6 +480,7 @@ pub fn run() {
             )
             // .inner_size(width, height)
             // .position(-100., -100.)
+            .focusable(false)   // 若遮罩层获取焦点，会阻碍后端监听事件
             .decorations(false)
             .transparent(true)
             .resizable(false)
